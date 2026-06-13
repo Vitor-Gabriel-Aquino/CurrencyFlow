@@ -1,0 +1,51 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: currencyflow-app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: "http://localhost:${APP_PORT:-8000}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: currencyflow
+      DB_USERNAME: currencyflow
+      DB_PASSWORD: secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        if [ ! -f .env ]; then cp .env.example .env; fi &&
+        composer install &&
+        if ! grep -q '^APP_KEY=base64:' .env; then php artisan key:generate --ansi --force; fi &&
+        php artisan serve --host=0.0.0.0 --port=8000
+      "
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: currencyflow-postgres
+    ports:
+      - "${DB_PORT_FORWARD:-5432}:5432"
+    environment:
+      POSTGRES_DB: currencyflow
+      POSTGRES_USER: currencyflow
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U currencyflow -d currencyflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

@@ -13,8 +13,8 @@ Implemented so far:
 - Laravel 12 project initialized.
 - PHP 8.2+ requirement verified locally with PHP 8.4.19.
 - PostgreSQL environment variables prepared.
-- Local development can run with Laravel's built-in server.
-- Initial Codex project instructions added in `AGENTS.md`.
+- Docker Compose local environment configured.
+- Local migrations and tests can run inside Docker.
 
 ## Planned Stack
 
@@ -31,16 +31,10 @@ Implemented so far:
 - PHP 8.2 or higher
 - Composer
 - Git
-
-Docker and PostgreSQL setup will be added in a later delivery.
+- Docker
+- Docker Compose
 
 ## Local Setup
-
-Install dependencies:
-
-```bash
-composer install
-```
 
 Copy the environment file if needed:
 
@@ -48,19 +42,35 @@ Copy the environment file if needed:
 cp .env.example .env
 ```
 
-Generate the application key if needed:
+Start the Docker environment:
 
 ```bash
-php artisan key:generate
+docker compose up -d --build
 ```
 
-Start the local development server:
+Run migrations:
 
 ```bash
-php artisan serve
+docker compose exec app php artisan migrate
 ```
 
 Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+The application container creates `.env`, installs Composer dependencies, and generates `APP_KEY` when needed.
+
+## Local Setup Without Docker
+
+The preferred local workflow uses Docker. If PHP and Composer are installed locally, the application can also be started with:
+
+```bash
+composer install
+php artisan key:generate
+php artisan serve
+```
 
 ```text
 http://127.0.0.1:8000
@@ -72,14 +82,21 @@ The project is configured for PostgreSQL:
 
 ```env
 DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
+DB_HOST=postgres
 DB_PORT=5432
 DB_DATABASE=currencyflow
 DB_USERNAME=currencyflow
 DB_PASSWORD=secret
 ```
 
-During the bootstrap phase, sessions use the file driver so the default Laravel page can load before PostgreSQL is configured:
+For host tools outside Docker, PostgreSQL is forwarded to:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT_FORWARD=5432
+```
+
+Sessions currently use the file driver:
 
 ```env
 SESSION_DRIVER=file
@@ -92,19 +109,31 @@ This will be reviewed after Docker, PostgreSQL, and Passport are configured.
 Check Laravel:
 
 ```bash
-php artisan --version
+docker compose exec app php artisan --version
 ```
 
 Check PHP:
 
 ```bash
-php -v
+docker compose exec app php -v
+```
+
+Run migrations:
+
+```bash
+docker compose exec app php artisan migrate
 ```
 
 Run tests:
 
 ```bash
-php artisan test
+docker compose exec app php artisan test
+```
+
+Clear Laravel configuration cache if environment changes are not reflected:
+
+```bash
+docker compose exec app php artisan config:clear
 ```
 
 ## Development Workflow
@@ -113,4 +142,3 @@ php artisan test
 - Use branch names in English and kebab-case, such as `feat/payment-request-api`.
 - Use Conventional Commits.
 - Keep documentation and code in English.
-- Keep `AGENTS.md` updated when project commands, ports, URLs, or verification steps change.
