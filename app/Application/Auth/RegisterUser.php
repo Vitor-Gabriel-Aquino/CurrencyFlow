@@ -7,7 +7,7 @@ use App\Models\User;
 class RegisterUser
 {
     /**
-     * @param array{name: string, email: string, password: string} $data
+     * @param array{role_id: string, country_id: string, preferred_currency_id: string, name: string, email: string, password: string} $data
      */
     public function handle(array $data): User
     {

@@ -120,6 +120,7 @@ CurrencyFlow uses Laravel Passport with OAuth 2.0 Authorization Code Grant and P
 
 The backend owns:
 
+- country and currency discovery through `GET /api/countries` and `GET /api/currencies`;
 - user registration through `POST /api/register`;
 - browser login through `GET /login` and `POST /login`;
 - OAuth authorization through `GET /oauth/authorize`;

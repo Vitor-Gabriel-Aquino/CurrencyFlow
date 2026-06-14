@@ -2,6 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Country;
+use App\Models\Currency;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +28,22 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'role_id' => Role::query()->firstOrCreate([
+                'name' => Role::EMPLOYEE,
+            ], [
+                'description' => 'Employee who can create payment requests.',
+            ])->id,
+            'country_id' => Country::query()->firstOrCreate([
+                'code' => 'PT',
+            ], [
+                'name' => 'Portugal',
+            ])->id,
+            'preferred_currency_id' => Currency::query()->firstOrCreate([
+                'code' => 'EUR',
+            ], [
+                'name' => 'Euro',
+                'exponent' => 2,
+            ])->id,
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
