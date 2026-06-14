@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domain\Users\Enums\UserRole;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Role;
@@ -29,7 +30,7 @@ class UserFactory extends Factory
     {
         return [
             'role_id' => Role::query()->firstOrCreate([
-                'name' => Role::EMPLOYEE,
+                'name' => UserRole::Employee->value,
             ], [
                 'description' => 'Employee who can create payment requests.',
             ])->id,

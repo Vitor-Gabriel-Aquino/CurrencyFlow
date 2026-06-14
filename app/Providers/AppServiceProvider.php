@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\Role;
+use App\Domain\Users\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -31,6 +31,6 @@ class AppServiceProvider extends ServiceProvider
             'payments:approve' => 'Approve or reject payment requests',
         ]);
 
-        Gate::define('perform-finance-actions', fn (User $user): bool => $user->hasRole(Role::FINANCE));
+        Gate::define('perform-finance-actions', fn (User $user): bool => $user->hasRole(UserRole::Finance->value));
     }
 }
