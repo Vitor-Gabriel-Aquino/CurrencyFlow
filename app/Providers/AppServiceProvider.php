@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domain\PaymentRequests\Contracts\PaymentRequestRepository;
+use App\Domain\Shared\Contracts\TransactionManager;
 use App\Domain\Users\Enums\UserRole;
+use App\Infrastructure\Persistence\DatabaseTransactionManager;
+use App\Infrastructure\Persistence\Eloquent\EloquentPaymentRequestRepository;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -15,7 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(TransactionManager::class, DatabaseTransactionManager::class);
+        $this->app->bind(PaymentRequestRepository::class, EloquentPaymentRequestRepository::class);
     }
 
     /**
