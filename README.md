@@ -6,7 +6,7 @@ It supports authenticated employees creating payment requests in local currencie
 
 ## Current Status
 
-Bootstrap phase.
+Authentication foundation phase.
 
 Implemented so far:
 
@@ -15,6 +15,9 @@ Implemented so far:
 - PostgreSQL environment variables prepared.
 - Docker Compose local environment configured.
 - Local migrations and tests can run inside Docker.
+- Laravel Passport configured for OAuth 2.0 Authorization Code Grant with PKCE.
+- UUIDs configured for public user identifiers.
+- Minimal registration, login, logout, and protected user endpoints implemented.
 
 ## Planned Stack
 
@@ -48,10 +51,10 @@ Start the Docker environment:
 docker compose up -d --build
 ```
 
-Run migrations:
+Run migrations and seed local development data:
 
 ```bash
-docker compose exec app php artisan migrate
+docker compose exec app php artisan migrate --seed
 ```
 
 Open:
@@ -61,6 +64,13 @@ http://127.0.0.1:8000
 ```
 
 The application container creates `.env`, installs Composer dependencies, and generates `APP_KEY` when needed.
+
+The local seeders create:
+
+- a public OAuth client for the future frontend;
+- a development user:
+  - email: `test@example.com`
+  - password: `password`
 
 ## Local Setup Without Docker
 
@@ -96,13 +106,41 @@ DB_HOST=127.0.0.1
 DB_PORT_FORWARD=5432
 ```
 
-Sessions currently use the file driver:
+Sessions use the database driver:
 
 ```env
-SESSION_DRIVER=file
+SESSION_DRIVER=database
 ```
 
-This will be reviewed after Docker, PostgreSQL, and Passport are configured.
+The database session driver keeps local behavior close to production and supports the web login and OAuth authorization consent flow.
+
+## OAuth Authentication
+
+CurrencyFlow uses Laravel Passport with OAuth 2.0 Authorization Code Grant and PKCE.
+
+The backend owns:
+
+- user registration through `POST /api/register`;
+- browser login through `GET /login` and `POST /login`;
+- OAuth authorization through `GET /oauth/authorize`;
+- token exchange through `POST /oauth/token`;
+- authenticated API access through Bearer tokens at endpoints such as `GET /api/user`.
+- token revocation through `DELETE /api/tokens/current`.
+
+The frontend will own the PKCE client flow:
+
+1. Generate a temporary `code_verifier`.
+2. Derive a `code_challenge` from the verifier.
+3. Redirect the user to `/oauth/authorize` with the public client ID, redirect URI, requested scopes, `code_challenge`, and `state`.
+4. Receive the authorization `code` on the frontend callback URL.
+5. Exchange the authorization code and `code_verifier` at `/oauth/token`.
+6. Use the returned `access_token` as `Authorization: Bearer <token>` for protected API requests.
+
+The frontend may request these initial scopes:
+
+- `payments:read`
+- `payments:create`
+- `payments:approve`
 
 ## Useful Commands
 
@@ -121,7 +159,13 @@ docker compose exec app php -v
 Run migrations:
 
 ```bash
-docker compose exec app php artisan migrate
+docker compose exec app php artisan migrate --seed
+```
+
+Rebuild the local database:
+
+```bash
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
 Run tests:

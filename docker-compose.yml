@@ -13,12 +13,6 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
       APP_URL: "http://localhost:${APP_PORT:-8000}"
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: currencyflow
-      DB_USERNAME: currencyflow
-      DB_PASSWORD: secret
     depends_on:
       postgres:
         condition: service_healthy
