@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -14,13 +13,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             OAuthClientSeeder::class,
-        ]);
-
-        User::query()->updateOrCreate([
-            'email' => 'test@example.com',
-        ], [
-            'name' => 'Test Employee',
-            'password' => 'password',
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
         ]);
     }
 }

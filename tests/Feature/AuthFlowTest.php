@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Client;
 use Tests\TestCase;
@@ -13,16 +14,23 @@ class AuthFlowTest extends TestCase
 
     public function test_user_can_register(): void
     {
+        $this->seed(ReferenceDataSeeder::class);
+
         $response = $this->postJson('/api/register', [
             'name' => 'Test Employee',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'country_code' => 'PT',
+            'preferred_currency_code' => 'EUR',
         ]);
 
         $response
             ->assertCreated()
-            ->assertJsonPath('data.email', 'test@example.com');
+            ->assertJsonPath('data.email', 'test@example.com')
+            ->assertJsonPath('data.role', 'employee')
+            ->assertJsonPath('data.country.code', 'PT')
+            ->assertJsonPath('data.preferred_currency.code', 'EUR');
 
         $this->assertDatabaseHas('users', [
             'email' => 'test@example.com',
@@ -97,6 +105,16 @@ class AuthFlowTest extends TestCase
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => 'employee@example.com',
+                    'role' => 'employee',
+                    'country' => [
+                        'code' => 'PT',
+                        'name' => 'Portugal',
+                    ],
+                    'preferred_currency' => [
+                        'code' => 'EUR',
+                        'name' => 'Euro',
+                        'exponent' => 2,
+                    ],
                 ],
             ]);
     }
