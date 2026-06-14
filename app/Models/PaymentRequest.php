@@ -16,7 +16,7 @@ class PaymentRequest extends Model
         'currency_id',
         'amount',
         'exchange_rate_source_id',
-        'exchange_rate_to_eur',
+        'eur_exchange_rate',
         'amount_eur',
         'exchange_rate_fetched_at',
     ];
@@ -29,7 +29,7 @@ class PaymentRequest extends Model
         'title',
         'description',
         'amount',
-        'exchange_rate_to_eur',
+        'eur_exchange_rate',
         'amount_eur',
         'exchange_rate_fetched_at',
         'reviewed_by',
@@ -42,7 +42,7 @@ class PaymentRequest extends Model
     {
         return [
             'amount' => 'decimal:4',
-            'exchange_rate_to_eur' => 'decimal:8',
+            'eur_exchange_rate' => 'decimal:8',
             'amount_eur' => 'decimal:4',
             'exchange_rate_fetched_at' => 'immutable_datetime',
             'reviewed_at' => 'immutable_datetime',

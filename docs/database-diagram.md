@@ -84,7 +84,7 @@ erDiagram
         string title
         text description
         decimal amount
-        decimal exchange_rate_to_eur
+        decimal eur_exchange_rate
         decimal amount_eur
         timestamp exchange_rate_fetched_at
         uuid reviewed_by FK
@@ -126,7 +126,8 @@ erDiagram
 - `payment_request_statuses.name` starts with `pending`, `approved`, `rejected`, and `expired`.
 - `payment_request_event_types.name` starts with `created`, `approved`, `rejected`, and `expired`.
 - `exchange_rate_sources.name` starts with the selected external provider, such as `ExchangeRate-API`.
-- `payment_requests.exchange_rate_to_eur`, `amount_eur`, `exchange_rate_source_id`, and `exchange_rate_fetched_at` must be immutable after creation.
+- `payment_requests.eur_exchange_rate`, `amount_eur`, `exchange_rate_source_id`, and `exchange_rate_fetched_at` must be immutable after creation.
+- `payment_requests.eur_exchange_rate` stores the EUR to local currency rate used at creation time.
 - `payment_request_events` provides basic audit history for create, approve, reject, and expire actions.
 
 Only `roles`, `countries`, `currencies`, and the additional user relationships are part of the current delivery. Payment request, exchange rate source, status, and event type tables are documented here to validate the model direction before later migrations.

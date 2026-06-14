@@ -13,7 +13,7 @@ final readonly class CreatePaymentRequestData
         public string $title,
         public ?string $description,
         public string $amount,
-        public string $exchangeRateToEur,
+        public string $eurExchangeRate,
         public string $amountEur,
         public CarbonImmutable $exchangeRateFetchedAt,
         public CarbonImmutable $expiresAt,

@@ -37,7 +37,7 @@ class PostgresPaymentRequestIntegrityTest extends TestCase
 
             $connection->table('payment_requests')
                 ->where('id', $paymentRequestId)
-                ->update(['exchange_rate_to_eur' => '999.00000000']);
+                ->update(['eur_exchange_rate' => '999.00000000']);
         } finally {
             while ($connection->transactionLevel() > 0) {
                 $connection->rollBack();
@@ -114,7 +114,7 @@ class PostgresPaymentRequestIntegrityTest extends TestCase
             'title' => 'PostgreSQL trigger test',
             'description' => 'Payment request created inside a rollback-only integration test.',
             'amount' => '100.0000',
-            'exchange_rate_to_eur' => '0.50000000',
+            'eur_exchange_rate' => '2.00000000',
             'amount_eur' => '50.0000',
             'exchange_rate_fetched_at' => $now,
             'expires_at' => now()->addDays(2)->format('Y-m-d H:i:s'),

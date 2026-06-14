@@ -50,7 +50,7 @@ class PaymentRequestPersistenceTest extends TestCase
         $this->assertSame(PaymentRequestStatus::Pending->value, $paymentRequest->status);
         $this->assertSame('BRL', $paymentRequest->currencyCode);
         $this->assertSame('123.4500', $paymentRequest->amount);
-        $this->assertSame('0.17000000', $paymentRequest->exchangeRateToEur);
+        $this->assertSame('5.88184850', $paymentRequest->eurExchangeRate);
         $this->assertSame('20.9900', $paymentRequest->amountEur);
         $this->assertSame('ExchangeRate-API', $paymentRequest->exchangeRateSource);
         $this->assertSame('2026-06-14 10:00:00', $paymentRequest->exchangeRateFetchedAt->format('Y-m-d H:i:s'));
@@ -67,7 +67,7 @@ class PaymentRequestPersistenceTest extends TestCase
         $paymentRequest = $this->createPaymentRequest();
 
         $paymentRequestModel = PaymentRequest::query()->findOrFail($paymentRequest->id);
-        $paymentRequestModel->exchange_rate_to_eur = '999.00000000';
+        $paymentRequestModel->eur_exchange_rate = '999.00000000';
 
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Payment request exchange rate data cannot be changed after creation.');
@@ -162,7 +162,7 @@ class PaymentRequestPersistenceTest extends TestCase
             title: 'Conference reimbursement',
             description: 'Hotel and local transportation costs.',
             amount: '123.45',
-            exchangeRateToEur: '0.17000000',
+            eurExchangeRate: '5.88184850',
             amountEur: '20.99',
             exchangeRateFetchedAt: CarbonImmutable::parse('2026-06-14 10:00:00'),
             expiresAt: CarbonImmutable::parse('2026-06-16 10:00:00'),
