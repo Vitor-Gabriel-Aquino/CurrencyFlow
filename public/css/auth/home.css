@@ -1,0 +1,14 @@
+.session {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fbfcfe;
+}
+
+.session strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text);
+    font-size: 0.9rem;
+}

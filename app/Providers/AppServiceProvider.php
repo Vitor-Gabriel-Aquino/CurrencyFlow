@@ -20,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Passport::authorizationView('auth.authorize');
+
         Passport::tokensCan([
             'payments:read' => 'Read payment requests',
             'payments:create' => 'Create payment requests',
