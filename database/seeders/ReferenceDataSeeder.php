@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Users\Enums\UserRole;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Role;
@@ -19,8 +20,8 @@ class ReferenceDataSeeder extends Seeder
     private function seedRoles(): void
     {
         $roles = [
-            [Role::EMPLOYEE, 'Employee who can create payment requests.'],
-            [Role::FINANCE, 'Finance team member who can approve or reject payment requests.'],
+            [UserRole::Employee->value, 'Employee who can create payment requests.'],
+            [UserRole::Finance->value, 'Finance team member who can approve or reject payment requests.'],
         ];
 
         foreach ($roles as [$name, $description]) {

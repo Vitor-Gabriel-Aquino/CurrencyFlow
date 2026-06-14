@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Role;
+use App\Domain\Users\Enums\UserRole;
 use App\Models\User;
 use Database\Seeders\ReferenceDataSeeder;
 use Database\Seeders\UserSeeder;
@@ -21,17 +21,17 @@ class UserReferenceDataTest extends TestCase
             UserSeeder::class,
         ]);
 
-        $this->assertDatabaseHas('roles', ['name' => Role::EMPLOYEE]);
-        $this->assertDatabaseHas('roles', ['name' => Role::FINANCE]);
+        $this->assertDatabaseHas('roles', ['name' => UserRole::Employee->value]);
+        $this->assertDatabaseHas('roles', ['name' => UserRole::Finance->value]);
         $this->assertDatabaseCount('countries', 6);
         $this->assertDatabaseCount('currencies', 6);
 
         $this->assertSame(5, User::query()
-            ->whereHas('role', fn ($query) => $query->where('name', Role::EMPLOYEE))
+            ->whereHas('role', fn ($query) => $query->where('name', UserRole::Employee->value))
             ->count());
 
         $this->assertSame(1, User::query()
-            ->whereHas('role', fn ($query) => $query->where('name', Role::FINANCE))
+            ->whereHas('role', fn ($query) => $query->where('name', UserRole::Finance->value))
             ->count());
     }
 

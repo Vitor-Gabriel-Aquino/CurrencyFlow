@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Application\Auth\RegisterUser;
 use App\Application\Auth\RevokeCurrentAccessToken;
+use App\Domain\Shared\ValueObjects\CountryCode;
+use App\Domain\Shared\ValueObjects\CurrencyCode;
+use App\Domain\Users\Enums\UserRole;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Role;
@@ -24,8 +27,8 @@ class AuthController extends Controller
     public function register(Request $request, RegisterUser $registerUser): JsonResponse
     {
         $request->merge([
-            'country_code' => strtoupper((string) $request->input('country_code')),
-            'preferred_currency_code' => strtoupper((string) $request->input('preferred_currency_code')),
+            'country_code' => (string) CountryCode::fromString($request->input('country_code')),
+            'preferred_currency_code' => (string) CurrencyCode::fromString($request->input('preferred_currency_code')),
         ]);
 
         $validated = $request->validate([
@@ -37,7 +40,7 @@ class AuthController extends Controller
         ]);
 
         $user = $registerUser->handle([
-            'role_id' => Role::query()->where('name', Role::EMPLOYEE)->firstOrFail()->id,
+            'role_id' => Role::query()->where('name', UserRole::Employee->value)->firstOrFail()->id,
             'country_id' => Country::query()->where('code', $validated['country_code'])->firstOrFail()->id,
             'preferred_currency_id' => Currency::query()->where('code', $validated['preferred_currency_code'])->firstOrFail()->id,
             'name' => $validated['name'],

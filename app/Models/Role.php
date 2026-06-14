@@ -10,9 +10,6 @@ class Role extends Model
 {
     use HasUuids;
 
-    public const EMPLOYEE = 'employee';
-    public const FINANCE = 'finance';
-
     protected $fillable = [
         'name',
         'description',

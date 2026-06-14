@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Users\Enums\UserRole;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Role;
@@ -12,8 +13,8 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $employeeRole = Role::query()->where('name', Role::EMPLOYEE)->firstOrFail();
-        $financeRole = Role::query()->where('name', Role::FINANCE)->firstOrFail();
+        $employeeRole = Role::query()->where('name', UserRole::Employee->value)->firstOrFail();
+        $financeRole = Role::query()->where('name', UserRole::Finance->value)->firstOrFail();
 
         $users = [
             ['Test Employee', 'test@example.com', $employeeRole->id, 'PT', 'EUR'],
