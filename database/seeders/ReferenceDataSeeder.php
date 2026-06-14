@@ -2,9 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Domain\PaymentRequests\Enums\PaymentRequestEventType;
+use App\Domain\PaymentRequests\Enums\PaymentRequestStatus;
 use App\Domain\Users\Enums\UserRole;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\ExchangeRateSource;
+use App\Models\PaymentRequestEventType as PaymentRequestEventTypeModel;
+use App\Models\PaymentRequestStatus as PaymentRequestStatusModel;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
 
@@ -15,6 +20,9 @@ class ReferenceDataSeeder extends Seeder
         $this->seedRoles();
         $this->seedCountries();
         $this->seedCurrencies();
+        $this->seedPaymentRequestStatuses();
+        $this->seedPaymentRequestEventTypes();
+        $this->seedExchangeRateSources();
     }
 
     private function seedRoles(): void
@@ -71,5 +79,50 @@ class ReferenceDataSeeder extends Seeder
                 ],
             );
         }
+    }
+
+    private function seedPaymentRequestStatuses(): void
+    {
+        $statuses = [
+            [PaymentRequestStatus::Pending->value, 'Payment request is waiting for finance review.'],
+            [PaymentRequestStatus::Approved->value, 'Payment request was approved by finance.'],
+            [PaymentRequestStatus::Rejected->value, 'Payment request was rejected by finance.'],
+            [PaymentRequestStatus::Expired->value, 'Payment request expired before finance review.'],
+        ];
+
+        foreach ($statuses as [$name, $description]) {
+            PaymentRequestStatusModel::query()->updateOrCreate(
+                ['name' => $name],
+                ['description' => $description],
+            );
+        }
+    }
+
+    private function seedPaymentRequestEventTypes(): void
+    {
+        $eventTypes = [
+            [PaymentRequestEventType::Created->value, 'Payment request was created.'],
+            [PaymentRequestEventType::Approved->value, 'Payment request was approved.'],
+            [PaymentRequestEventType::Rejected->value, 'Payment request was rejected.'],
+            [PaymentRequestEventType::Expired->value, 'Payment request expired.'],
+        ];
+
+        foreach ($eventTypes as [$name, $description]) {
+            PaymentRequestEventTypeModel::query()->updateOrCreate(
+                ['name' => $name],
+                ['description' => $description],
+            );
+        }
+    }
+
+    private function seedExchangeRateSources(): void
+    {
+        ExchangeRateSource::query()->updateOrCreate(
+            ['name' => 'ExchangeRate-API'],
+            [
+                'description' => 'External exchange rate provider used to convert local currencies to EUR.',
+                'base_url' => 'https://www.exchangerate-api.com',
+            ],
+        );
     }
 }
