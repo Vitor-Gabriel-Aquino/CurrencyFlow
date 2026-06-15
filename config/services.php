@@ -22,6 +22,12 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'exchange_rate_api' => [
+        'url' => env('EXCHANGE_RATE_API_URL', 'https://open.er-api.com/v6/latest'),
+        'source' => env('EXCHANGE_RATE_API_SOURCE', 'ExchangeRate-API'),
+        'timeout' => env('EXCHANGE_RATE_API_TIMEOUT', 5),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

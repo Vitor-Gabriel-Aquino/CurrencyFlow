@@ -42,7 +42,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->decimal('amount', 19, 4);
-            $table->decimal('exchange_rate_to_eur', 19, 8);
+            $table->decimal('eur_exchange_rate', 19, 8);
             $table->decimal('amount_eur', 19, 4);
             $table->timestamp('exchange_rate_fetched_at');
             $table->foreignUuid('reviewed_by')->nullable()->constrained('users')->nullOnDelete();

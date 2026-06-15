@@ -21,7 +21,7 @@ return new class extends Migration
                 IF OLD.currency_id IS DISTINCT FROM NEW.currency_id
                     OR OLD.amount IS DISTINCT FROM NEW.amount
                     OR OLD.exchange_rate_source_id IS DISTINCT FROM NEW.exchange_rate_source_id
-                    OR OLD.exchange_rate_to_eur IS DISTINCT FROM NEW.exchange_rate_to_eur
+                    OR OLD.eur_exchange_rate IS DISTINCT FROM NEW.eur_exchange_rate
                     OR OLD.amount_eur IS DISTINCT FROM NEW.amount_eur
                     OR OLD.exchange_rate_fetched_at IS DISTINCT FROM NEW.exchange_rate_fetched_at
                 THEN
