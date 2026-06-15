@@ -9,6 +9,7 @@ use App\Domain\PaymentRequests\Data\ReviewPaymentRequestData;
 use App\Domain\PaymentRequests\Enums\PaymentRequestEventType;
 use App\Domain\PaymentRequests\Enums\PaymentRequestStatus;
 use App\Domain\Shared\Contracts\TransactionManager;
+use App\Domain\Shared\Data\PaginatedResult;
 use App\Models\PaymentRequest;
 use App\Models\PaymentRequestEventType as PaymentRequestEventTypeModel;
 use App\Models\PaymentRequestStatus as PaymentRequestStatusModel;
@@ -48,6 +49,37 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
 
             return $this->toRecord($paymentRequest);
         });
+    }
+
+    public function list(?string $requesterId = null, ?string $status = null, int $page = 1, int $perPage = 15): PaginatedResult
+    {
+        $paginator = PaymentRequest::query()
+            ->with(['currency', 'status', 'exchangeRateSource', 'events.eventType'])
+            ->when($requesterId, fn ($query) => $query->where('requester_id', $requesterId))
+            ->when($status, fn ($query) => $query->whereHas('status', fn ($statusQuery) => $statusQuery->where('name', $status)))
+            ->latest()
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return new PaginatedResult(
+            items: $paginator->getCollection()
+                ->map(fn (PaymentRequest $paymentRequest): PaymentRequestRecord => $this->toRecord($paymentRequest))
+                ->values()
+                ->all(),
+            currentPage: $paginator->currentPage(),
+            perPage: $paginator->perPage(),
+            total: $paginator->total(),
+            lastPage: $paginator->lastPage(),
+        );
+    }
+
+    public function find(string $paymentRequestId): ?PaymentRequestRecord
+    {
+        $paymentRequest = PaymentRequest::query()
+            ->with(['currency', 'status', 'exchangeRateSource', 'events.eventType'])
+            ->whereKey($paymentRequestId)
+            ->first();
+
+        return $paymentRequest ? $this->toRecord($paymentRequest) : null;
     }
 
     public function approvePending(string $paymentRequestId, ReviewPaymentRequestData $data): ?PaymentRequestRecord
@@ -166,7 +198,7 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
 
     private function toRecord(PaymentRequest $paymentRequest): PaymentRequestRecord
     {
-        $paymentRequest->load(['currency', 'status', 'exchangeRateSource', 'events.eventType']);
+        $paymentRequest->loadMissing(['currency', 'status', 'exchangeRateSource', 'events.eventType']);
 
         return new PaymentRequestRecord(
             id: $paymentRequest->id,
