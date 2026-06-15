@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domain\ExchangeRates\Contracts\ExchangeRateProvider;
 use App\Domain\PaymentRequests\Contracts\PaymentRequestRepository;
 use App\Domain\Shared\Contracts\TransactionManager;
 use App\Domain\Users\Enums\UserRole;
+use App\Infrastructure\ExchangeRates\ExchangeRateApiProvider;
 use App\Infrastructure\Persistence\DatabaseTransactionManager;
 use App\Infrastructure\Persistence\Eloquent\EloquentPaymentRequestRepository;
 use App\Models\User;
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(TransactionManager::class, DatabaseTransactionManager::class);
         $this->app->bind(PaymentRequestRepository::class, EloquentPaymentRequestRepository::class);
+        $this->app->bind(ExchangeRateProvider::class, ExchangeRateApiProvider::class);
     }
 
     /**
