@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Application\Auth\RegisterUser;
 use App\Application\Auth\RevokeCurrentAccessToken;
-use App\Domain\Shared\ValueObjects\CountryCode;
-use App\Domain\Shared\ValueObjects\CurrencyCode;
 use App\Domain\Users\Enums\UserRole;
+use App\Http\Requests\LoginFormRequest;
+use App\Http\Requests\RegisterUserFormRequest;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Role;
@@ -24,20 +24,9 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function register(Request $request, RegisterUser $registerUser): JsonResponse
+    public function register(RegisterUserFormRequest $request, RegisterUser $registerUser): JsonResponse
     {
-        $request->merge([
-            'country_code' => (string) CountryCode::fromString($request->input('country_code')),
-            'preferred_currency_code' => (string) CurrencyCode::fromString($request->input('preferred_currency_code')),
-        ]);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'country_code' => ['required', 'string', 'size:2', 'exists:countries,code'],
-            'preferred_currency_code' => ['required', 'string', 'size:3', 'exists:currencies,code'],
-        ]);
+        $validated = $request->validated();
 
         $user = $registerUser->handle([
             'role_id' => Role::query()->where('name', UserRole::Employee->value)->firstOrFail()->id,
@@ -53,14 +42,9 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(LoginFormRequest $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
-
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::attempt($request->credentials(), $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
