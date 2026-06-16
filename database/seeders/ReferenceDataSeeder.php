@@ -42,14 +42,7 @@ class ReferenceDataSeeder extends Seeder
 
     private function seedCountries(): void
     {
-        $countries = [
-            ['PT', 'Portugal'],
-            ['BR', 'Brazil'],
-            ['US', 'United States'],
-            ['GB', 'United Kingdom'],
-            ['JP', 'Japan'],
-            ['PL', 'Poland'],
-        ];
+        $countries = config('reference_data.countries', []);
 
         foreach ($countries as [$code, $name]) {
             Country::query()->updateOrCreate(
@@ -61,14 +54,7 @@ class ReferenceDataSeeder extends Seeder
 
     private function seedCurrencies(): void
     {
-        $currencies = [
-            ['EUR', 'Euro', 2],
-            ['BRL', 'Brazilian Real', 2],
-            ['USD', 'United States Dollar', 2],
-            ['GBP', 'Pound Sterling', 2],
-            ['JPY', 'Japanese Yen', 0],
-            ['PLN', 'Polish Zloty', 2],
-        ];
+        $currencies = config('reference_data.currencies', []);
 
         foreach ($currencies as [$code, $name, $exponent]) {
             Currency::query()->updateOrCreate(
