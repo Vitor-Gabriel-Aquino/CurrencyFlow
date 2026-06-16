@@ -10,8 +10,8 @@ use App\Domain\PaymentRequests\Enums\PaymentRequestEventType;
 use App\Domain\PaymentRequests\Enums\PaymentRequestStatus;
 use App\Models\Currency;
 use App\Models\ExchangeRateSource;
-use App\Models\PaymentRequestEvent;
 use App\Models\PaymentRequest;
+use App\Models\PaymentRequestEvent;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ReferenceDataSeeder;
@@ -50,10 +50,39 @@ class ExpirePendingPaymentRequestsCommandTest extends TestCase
 
         $firstExpired = $this->createPaymentRequest('First expired request', '2026-06-16 10:00:00');
         $secondExpired = $this->createPaymentRequest('Second expired request', '2026-06-16 10:00:00');
-        $futurePending = $this->createPaymentRequest('Future pending request', '2026-06-16 10:10:00');
-        $approved = $this->createPaymentRequest('Approved request', '2026-06-16 10:00:00');
 
+        $this->artisan('payment-requests:expire-pending', ['--batch' => 1])
+            ->expectsOutput('Expired 2 pending payment request(s).')
+            ->assertSuccessful();
+
+        $this->assertPaymentRequestStatus($firstExpired->id, PaymentRequestStatus::Expired);
+        $this->assertPaymentRequestStatus($secondExpired->id, PaymentRequestStatus::Expired);
+
+        $this->assertPaymentRequestEvent($firstExpired->id, PaymentRequestEventType::Expired);
+        $this->assertPaymentRequestEvent($secondExpired->id, PaymentRequestEventType::Expired);
+    }
+
+    public function test_command_does_not_expire_pending_payment_requests_before_due_time(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-16 10:00:01'));
+
+        $futurePending = $this->createPaymentRequest('Future pending request', '2026-06-16 10:10:00');
+
+        $this->artisan('payment-requests:expire-pending')
+            ->expectsOutput('Expired 0 pending payment request(s).')
+            ->assertSuccessful();
+
+        $this->assertPaymentRequestStatus($futurePending->id, PaymentRequestStatus::Pending);
+    }
+
+    public function test_command_does_not_overwrite_finalized_payment_requests(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-16 10:00:01'));
+
+        $approved = $this->createPaymentRequest('Approved request', '2026-06-16 10:00:00');
+        $rejected = $this->createPaymentRequest('Rejected request', '2026-06-16 10:00:00');
         $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+
         $this->repository->approvePending(
             $approved->id,
             new ReviewPaymentRequestData(
@@ -62,19 +91,21 @@ class ExpirePendingPaymentRequestsCommandTest extends TestCase
                 reviewedAt: CarbonImmutable::parse('2026-06-15 10:00:00'),
             ),
         );
+        $this->repository->rejectPending(
+            $rejected->id,
+            new ReviewPaymentRequestData(
+                reviewerId: $finance->id,
+                reviewNote: 'Rejected before expiration command.',
+                reviewedAt: CarbonImmutable::parse('2026-06-15 10:00:00'),
+            ),
+        );
 
-        $this->artisan('payment-requests:expire-pending', ['--batch' => 1])
-            ->expectsOutput('Expired 2 pending payment request(s).')
+        $this->artisan('payment-requests:expire-pending')
+            ->expectsOutput('Expired 0 pending payment request(s).')
             ->assertSuccessful();
 
-        $this->assertPaymentRequestStatus($firstExpired->id, PaymentRequestStatus::Expired);
-        $this->assertPaymentRequestStatus($secondExpired->id, PaymentRequestStatus::Expired);
-        $this->assertPaymentRequestStatus($futurePending->id, PaymentRequestStatus::Pending);
         $this->assertPaymentRequestStatus($approved->id, PaymentRequestStatus::Approved);
-
-        $this->assertPaymentRequestEvent($firstExpired->id, PaymentRequestEventType::Expired);
-        $this->assertPaymentRequestEvent($secondExpired->id, PaymentRequestEventType::Expired);
-
+        $this->assertPaymentRequestStatus($rejected->id, PaymentRequestStatus::Rejected);
     }
 
     public function test_command_rejects_invalid_batch_size(): void

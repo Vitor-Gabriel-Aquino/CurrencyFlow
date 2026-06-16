@@ -14,17 +14,22 @@ class UserReferenceDataTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_seeders_create_employee_and_finance_users_with_reference_data(): void
+    public function test_reference_data_seeder_creates_roles_countries_and_currencies(): void
     {
-        $this->seed([
-            ReferenceDataSeeder::class,
-            UserSeeder::class,
-        ]);
+        $this->seed(ReferenceDataSeeder::class);
 
         $this->assertDatabaseHas('roles', ['name' => UserRole::Employee->value]);
         $this->assertDatabaseHas('roles', ['name' => UserRole::Finance->value]);
         $this->assertDatabaseCount('countries', 6);
         $this->assertDatabaseCount('currencies', 6);
+    }
+
+    public function test_user_seeder_creates_employee_and_finance_users(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
 
         $this->assertSame(5, User::query()
             ->whereHas('role', fn ($query) => $query->where('name', UserRole::Employee->value))
