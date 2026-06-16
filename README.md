@@ -303,6 +303,16 @@ Rebuild the local database:
 docker compose exec app php artisan migrate:fresh --seed
 ```
 
+Reference countries and currencies are seeded from `config/reference_data.php`. The currency snapshot is based on the official ExchangeRate-API supported currencies page: https://www.exchangerate-api.com/docs/supported-currencies. Countries are derived from the listed country/region names where a safe two-letter country or territory code is available.
+
+Seeders use upserts, so existing records are updated or inserted, not deleted. This avoids breaking users or payment requests that reference older data.
+
+Reference data is refreshed by updating the versioned snapshot and running:
+
+```bash
+docker compose exec app php artisan migrate --seed
+```
+
 List routes:
 
 ```bash

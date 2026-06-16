@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Domain\Users\Enums\UserRole;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\User;
 use Database\Seeders\ReferenceDataSeeder;
 use Database\Seeders\UserSeeder;
@@ -20,8 +22,15 @@ class UserReferenceDataTest extends TestCase
 
         $this->assertDatabaseHas('roles', ['name' => UserRole::Employee->value]);
         $this->assertDatabaseHas('roles', ['name' => UserRole::Finance->value]);
-        $this->assertDatabaseCount('countries', 6);
-        $this->assertDatabaseCount('currencies', 6);
+        $this->assertGreaterThanOrEqual(160, Country::query()->count());
+        $this->assertSame(162, Currency::query()->count());
+        $this->assertDatabaseHas('countries', ['code' => 'BR', 'name' => 'Brazil']);
+        $this->assertDatabaseHas('countries', ['code' => 'PT', 'name' => 'Portugal']);
+        $this->assertDatabaseHas('countries', ['code' => 'US', 'name' => 'United States']);
+        $this->assertDatabaseHas('currencies', ['code' => 'BRL', 'name' => 'Brazilian Real', 'exponent' => 2]);
+        $this->assertDatabaseHas('currencies', ['code' => 'EUR', 'name' => 'Euro', 'exponent' => 2]);
+        $this->assertDatabaseHas('currencies', ['code' => 'JPY', 'name' => 'Japanese Yen', 'exponent' => 0]);
+        $this->assertDatabaseHas('currencies', ['code' => 'KWD', 'name' => 'Kuwaiti Dinar', 'exponent' => 3]);
     }
 
     public function test_user_seeder_creates_employee_and_finance_users(): void
@@ -60,8 +69,10 @@ class UserReferenceDataTest extends TestCase
 
         $this->getJson('/api/countries')
             ->assertOk()
-            ->assertJsonPath('data.0.code', 'BR')
-            ->assertJsonPath('data.0.name', 'Brazil')
+            ->assertJsonFragment([
+                'code' => 'BR',
+                'name' => 'Brazil',
+            ])
             ->assertJsonMissingPath('data.0.id');
     }
 
@@ -71,9 +82,11 @@ class UserReferenceDataTest extends TestCase
 
         $this->getJson('/api/currencies')
             ->assertOk()
-            ->assertJsonPath('data.0.code', 'BRL')
-            ->assertJsonPath('data.0.name', 'Brazilian Real')
-            ->assertJsonPath('data.0.exponent', 2)
+            ->assertJsonFragment([
+                'code' => 'BRL',
+                'name' => 'Brazilian Real',
+                'exponent' => 2,
+            ])
             ->assertJsonMissingPath('data.0.id');
     }
 }
