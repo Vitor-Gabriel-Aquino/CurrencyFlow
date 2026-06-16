@@ -12,6 +12,8 @@ use App\Infrastructure\Persistence\Eloquent\EloquentPaymentRequestRepository;
 use App\Models\Currency;
 use App\Models\ExchangeRateSource;
 use App\Models\PaymentRequest;
+use App\Models\PaymentRequestEvent;
+use App\Models\PaymentRequestStatus as PaymentRequestStatusModel;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ReferenceDataSeeder;
@@ -57,6 +59,9 @@ class PaymentRequestPersistenceTest extends TestCase
 
         $this->assertDatabaseHas('payment_request_events', [
             'payment_request_id' => $paymentRequest->id,
+            'from_status_id' => null,
+            'to_status_id' => $this->statusId(PaymentRequestStatus::Pending),
+            'note' => null,
         ]);
 
         $this->assertSame([PaymentRequestEventType::Created->value], $paymentRequest->eventTypes);
@@ -93,6 +98,14 @@ class PaymentRequestPersistenceTest extends TestCase
         $this->assertSame(PaymentRequestStatus::Approved->value, $approvedPaymentRequest->status);
         $this->assertSame($finance->id, $approvedPaymentRequest->reviewedBy);
         $this->assertSame('Approved for reimbursement.', $approvedPaymentRequest->reviewNote);
+
+        $this->assertPaymentRequestEventTransition(
+            $paymentRequest->id,
+            PaymentRequestEventType::Approved,
+            PaymentRequestStatus::Pending,
+            PaymentRequestStatus::Approved,
+            'Approved for reimbursement.',
+        );
     }
 
     public function test_approved_payment_request_cannot_be_rejected(): void
@@ -136,6 +149,14 @@ class PaymentRequestPersistenceTest extends TestCase
 
         $this->assertNotNull($expiredPaymentRequest);
         $this->assertSame(PaymentRequestStatus::Expired->value, $expiredPaymentRequest->status);
+
+        $this->assertPaymentRequestEventTransition(
+            $paymentRequest->id,
+            PaymentRequestEventType::Expired,
+            PaymentRequestStatus::Pending,
+            PaymentRequestStatus::Expired,
+            'Expired automatically by system',
+        );
     }
 
     public function test_expired_payment_request_cannot_expire_again(): void
@@ -197,5 +218,31 @@ class PaymentRequestPersistenceTest extends TestCase
     private function finance(): User
     {
         return User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+    }
+
+    private function assertPaymentRequestEventTransition(
+        string $paymentRequestId,
+        PaymentRequestEventType $eventType,
+        PaymentRequestStatus $fromStatus,
+        PaymentRequestStatus $toStatus,
+        ?string $note,
+    ): void {
+        $event = PaymentRequestEvent::query()
+            ->where('payment_request_id', $paymentRequestId)
+            ->where('from_status_id', $this->statusId($fromStatus))
+            ->where('to_status_id', $this->statusId($toStatus))
+            ->where('note', $note)
+            ->whereHas('eventType', fn ($query) => $query->where('name', $eventType->value))
+            ->first();
+
+        $this->assertNotNull($event);
+    }
+
+    private function statusId(PaymentRequestStatus $status): string
+    {
+        return PaymentRequestStatusModel::query()
+            ->where('name', $status->value)
+            ->firstOrFail()
+            ->id;
     }
 }
