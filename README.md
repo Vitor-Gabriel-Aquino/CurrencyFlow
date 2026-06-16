@@ -195,6 +195,26 @@ Clear Laravel configuration cache if environment changes are not reflected:
 docker compose exec app php artisan config:clear
 ```
 
+## API Documentation
+
+The OpenAPI specification is available at:
+
+```text
+docs/openapi.json
+```
+
+The Postman collection for local API testing is available at:
+
+```text
+docs/postman/CurrencyFlow.postman_collection.json
+```
+
+Instructions for testing OAuth PKCE with Postman are available at:
+
+```text
+docs/postman/oauth-pkce.md
+```
+
 ## Development Workflow
 
 - Use one branch per delivery or feature.
