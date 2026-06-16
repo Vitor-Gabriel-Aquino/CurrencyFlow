@@ -82,6 +82,18 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
         return $paymentRequest ? $this->toRecord($paymentRequest) : null;
     }
 
+    public function findExpiredPendingIds(CarbonImmutable $now, int $limit): array
+    {
+        return PaymentRequest::query()
+            ->where('status_id', $this->statusId(PaymentRequestStatus::Pending))
+            ->where('expires_at', '<=', $now)
+            ->orderBy('expires_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('id')
+            ->all();
+    }
+
     public function approvePending(string $paymentRequestId, ReviewPaymentRequestData $data): ?PaymentRequestRecord
     {
         return $this->reviewPending(
@@ -141,6 +153,10 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
             $paymentRequest = $this->pendingPaymentRequest($paymentRequestId);
 
             if (! $paymentRequest) {
+                return null;
+            }
+
+            if ($paymentRequest->expires_at->lessThanOrEqualTo($data->reviewedAt)) {
                 return null;
             }
 
