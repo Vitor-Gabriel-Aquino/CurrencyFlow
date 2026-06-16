@@ -42,9 +42,9 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
             $paymentRequest->events()->create([
                 'actor_id' => $data->requesterId,
                 'event_type_id' => $this->eventTypeId(PaymentRequestEventType::Created),
-                'metadata' => [
-                    'status' => PaymentRequestStatus::Pending->value,
-                ],
+                'from_status_id' => null,
+                'to_status_id' => $this->statusId(PaymentRequestStatus::Pending),
+                'note' => null,
             ]);
 
             return $this->toRecord($paymentRequest);
@@ -134,9 +134,9 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
             $paymentRequest->events()->create([
                 'actor_id' => null,
                 'event_type_id' => $this->eventTypeId(PaymentRequestEventType::Expired),
-                'metadata' => [
-                    'status' => PaymentRequestStatus::Expired->value,
-                ],
+                'from_status_id' => $this->statusId(PaymentRequestStatus::Pending),
+                'to_status_id' => $this->statusId(PaymentRequestStatus::Expired),
+                'note' => 'Expired automatically by system',
             ]);
 
             return $this->toRecord($paymentRequest);
@@ -170,10 +170,9 @@ class EloquentPaymentRequestRepository implements PaymentRequestRepository
             $paymentRequest->events()->create([
                 'actor_id' => $data->reviewerId,
                 'event_type_id' => $this->eventTypeId($eventType),
-                'metadata' => [
-                    'status' => $targetStatus->value,
-                    'review_note' => $data->reviewNote,
-                ],
+                'from_status_id' => $this->statusId(PaymentRequestStatus::Pending),
+                'to_status_id' => $this->statusId($targetStatus),
+                'note' => $data->reviewNote,
             ]);
 
             return $this->toRecord($paymentRequest);
