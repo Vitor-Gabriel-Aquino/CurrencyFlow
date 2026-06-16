@@ -1,0 +1,1062 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CurrencyFlow API",
+    "version": "1.0.0",
+    "description": "REST API for registering users, discovering reference data, authenticating with OAuth 2.0 Authorization Code Grant with PKCE, and managing multi-currency payment requests."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local Docker environment"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Reference Data"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "OAuth"
+    },
+    {
+      "name": "Payment Requests"
+    }
+  ],
+  "paths": {
+    "/api/countries": {
+      "get": {
+        "tags": ["Reference Data"],
+        "summary": "List countries available for registration",
+        "operationId": "listCountries",
+        "responses": {
+          "200": {
+            "description": "Countries returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountryCollectionResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "code": "BR",
+                      "name": "Brazil"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/currencies": {
+      "get": {
+        "tags": ["Reference Data"],
+        "summary": "List currencies available for registration and payment requests",
+        "operationId": "listCurrencies",
+        "responses": {
+          "200": {
+            "description": "Currencies returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyCollectionResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "code": "BRL",
+                      "name": "Brazilian Real",
+                      "exponent": 2
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new employee user",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterUserRequest"
+              },
+              "example": {
+                "name": "Jane Employee",
+                "email": "jane@example.com",
+                "password": "password",
+                "password_confirmation": "password",
+                "country_code": "BR",
+                "preferred_currency_code": "BRL"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Registration throttle limit exceeded."
+          }
+        }
+      }
+    },
+    "/oauth/authorize": {
+      "get": {
+        "tags": ["OAuth"],
+        "summary": "Start OAuth authorization with PKCE",
+        "description": "Browser-facing OAuth authorization endpoint. The frontend redirects users here with a public client, requested scopes, state, and PKCE code challenge.",
+        "operationId": "authorizeOAuthClient",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "response_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "code"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "payments:read payments:create"
+            }
+          },
+          {
+            "name": "code_challenge",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge_method",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "S256"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorization consent page rendered."
+          },
+          "302": {
+            "description": "User is redirected after approving or denying authorization."
+          }
+        }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "tags": ["OAuth"],
+        "summary": "Exchange authorization code for access token",
+        "operationId": "issueOAuthToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthTokenRequest"
+              },
+              "example": {
+                "grant_type": "authorization_code",
+                "client_id": "019ec29e-86dc-70bd-9de9-157bc6e2f735",
+                "redirect_uri": "http://localhost:3000/auth/callback",
+                "code": "authorization-code-from-callback",
+                "code_verifier": "pkce-code-verifier"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OAuth token issued successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid OAuth request."
+          }
+        }
+      }
+    },
+    "/api/user": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get current authenticated user",
+        "operationId": "getCurrentUser",
+        "security": [
+          {
+            "PassportOAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          }
+        }
+      }
+    },
+    "/api/tokens/current": {
+      "delete": {
+        "tags": ["Authentication"],
+        "summary": "Revoke current access token",
+        "operationId": "revokeCurrentToken",
+        "security": [
+          {
+            "PassportOAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token revoked successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                },
+                "example": {
+                  "message": "Token revoked successfully."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          }
+        }
+      }
+    },
+    "/api/payment-requests": {
+      "get": {
+        "tags": ["Payment Requests"],
+        "summary": "List payment requests",
+        "description": "Finance users receive all payment requests. Employee users receive only their own payment requests.",
+        "operationId": "listPaymentRequests",
+        "security": [
+          {
+            "PassportOAuth": ["payments:read"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PaymentRequestStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment requests returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestCollectionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Payment Requests"],
+        "summary": "Create a payment request",
+        "operationId": "createPaymentRequest",
+        "security": [
+          {
+            "PassportOAuth": ["payments:create"]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentRequestRequest"
+              },
+              "example": {
+                "title": "Conference reimbursement",
+                "description": "Hotel and local transportation costs.",
+                "amount": "123.45",
+                "currency_code": "BRL"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment request created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "503": {
+            "description": "Exchange rate provider is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment-requests/{paymentRequest}": {
+      "get": {
+        "tags": ["Payment Requests"],
+        "summary": "Get payment request detail",
+        "operationId": "getPaymentRequest",
+        "security": [
+          {
+            "PassportOAuth": ["payments:read"]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentRequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment request returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/payment-requests/{paymentRequest}/approval": {
+      "post": {
+        "tags": ["Payment Requests"],
+        "summary": "Approve a pending payment request",
+        "description": "Requires the payments:approve scope and a finance role.",
+        "operationId": "approvePaymentRequest",
+        "security": [
+          {
+            "PassportOAuth": ["payments:approve"]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentRequestId"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/ReviewPaymentRequestBody"
+        },
+        "responses": {
+          "200": {
+            "description": "Payment request approved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/PaymentRequestReviewConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/payment-requests/{paymentRequest}/rejection": {
+      "post": {
+        "tags": ["Payment Requests"],
+        "summary": "Reject a pending payment request",
+        "description": "Requires the payments:approve scope and a finance role.",
+        "operationId": "rejectPaymentRequest",
+        "security": [
+          {
+            "PassportOAuth": ["payments:approve"]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentRequestId"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/ReviewPaymentRequestBody"
+        },
+        "responses": {
+          "200": {
+            "description": "Payment request rejected successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/PaymentRequestReviewConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "PassportOAuth": {
+        "type": "oauth2",
+        "description": "Laravel Passport OAuth 2.0 Authorization Code Grant with PKCE.",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "http://localhost:8000/oauth/authorize",
+            "tokenUrl": "http://localhost:8000/oauth/token",
+            "scopes": {
+              "payments:read": "Read payment requests",
+              "payments:create": "Create payment requests",
+              "payments:approve": "Approve or reject payment requests"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "PaymentRequestId": {
+        "name": "paymentRequest",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Payment request UUID."
+      }
+    },
+    "requestBodies": {
+      "ReviewPaymentRequestBody": {
+        "required": false,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ReviewPaymentRequestRequest"
+            },
+            "example": {
+              "review_note": "Approved for reimbursement."
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthenticated": {
+        "description": "Authentication is required.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "example": {
+              "message": "Unauthenticated."
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The token scope or user role is not allowed to perform this action.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "example": {
+              "message": "This action is unauthorized."
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested resource was not found.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "example": {
+              "message": "Not Found"
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Request validation failed.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidationErrorResponse"
+            }
+          }
+        }
+      },
+      "PaymentRequestReviewConflict": {
+        "description": "The payment request cannot be approved or rejected because it is not both pending and unexpired.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "examples": {
+              "approval": {
+                "value": {
+                  "message": "Only unexpired pending payment requests can be approved."
+                }
+              },
+              "rejection": {
+                "value": {
+                  "message": "Only unexpired pending payment requests can be rejected."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Country": {
+        "type": "object",
+        "required": ["code", "name"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "example": "BR"
+          },
+          "name": {
+            "type": "string",
+            "example": "Brazil"
+          }
+        }
+      },
+      "CountryCollectionResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Country"
+            }
+          }
+        }
+      },
+      "Currency": {
+        "type": "object",
+        "required": ["code", "name", "exponent"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "example": "BRL"
+          },
+          "name": {
+            "type": "string",
+            "example": "Brazilian Real"
+          },
+          "exponent": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 2
+          }
+        }
+      },
+      "CurrencyCollectionResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Currency"
+            }
+          }
+        }
+      },
+      "RegisterUserRequest": {
+        "type": "object",
+        "required": ["name", "email", "password", "password_confirmation", "country_code", "preferred_currency_code"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8
+          },
+          "password_confirmation": {
+            "type": "string",
+            "format": "password"
+          },
+          "country_code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "preferred_currency_code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "name", "email", "role", "country", "preferred_currency"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["employee", "finance"]
+          },
+          "country": {
+            "$ref": "#/components/schemas/Country"
+          },
+          "preferred_currency": {
+            "$ref": "#/components/schemas/Currency"
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "OAuthTokenRequest": {
+        "type": "object",
+        "required": ["grant_type", "client_id", "redirect_uri", "code", "code_verifier"],
+        "properties": {
+          "grant_type": {
+            "type": "string",
+            "const": "authorization_code"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "redirect_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "code": {
+            "type": "string"
+          },
+          "code_verifier": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuthTokenResponse": {
+        "type": "object",
+        "required": ["token_type", "expires_in", "access_token", "refresh_token"],
+        "properties": {
+          "token_type": {
+            "type": "string",
+            "example": "Bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "example": 31536000
+          },
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePaymentRequestRequest": {
+        "type": "object",
+        "required": ["title", "amount", "currency_code"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]{1,4})?$",
+            "example": "123.45"
+          },
+          "currency_code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "example": "BRL"
+          }
+        }
+      },
+      "ReviewPaymentRequestRequest": {
+        "type": "object",
+        "properties": {
+          "review_note": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          }
+        }
+      },
+      "PaymentRequestStatus": {
+        "type": "string",
+        "enum": ["pending", "approved", "rejected", "expired"]
+      },
+      "PaymentRequest": {
+        "type": "object",
+        "required": ["id", "requester_id", "title", "status", "currency", "amount", "amount_eur", "exchange_rate", "review", "expires_at", "events"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requester_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentRequestStatus"
+          },
+          "currency": {
+            "type": "object",
+            "required": ["code"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "BRL"
+              }
+            }
+          },
+          "amount": {
+            "type": "string",
+            "example": "123.4500"
+          },
+          "amount_eur": {
+            "type": "string",
+            "example": "20.9883"
+          },
+          "exchange_rate": {
+            "type": "object",
+            "required": ["base_currency_code", "local_currency_code", "eur_exchange_rate", "source", "fetched_at"],
+            "properties": {
+              "base_currency_code": {
+                "type": "string",
+                "example": "EUR"
+              },
+              "local_currency_code": {
+                "type": "string",
+                "example": "BRL"
+              },
+              "eur_exchange_rate": {
+                "type": "string",
+                "example": "5.88184850"
+              },
+              "source": {
+                "type": "string",
+                "example": "ExchangeRate-API"
+              },
+              "fetched_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "review": {
+            "type": "object",
+            "required": ["reviewed_by", "reviewed_at", "review_note"],
+            "properties": {
+              "reviewed_by": {
+                "type": ["string", "null"],
+                "format": "uuid"
+              },
+              "reviewed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "review_note": {
+                "type": ["string", "null"]
+              }
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["created", "approved", "rejected", "expired"]
+            }
+          }
+        }
+      },
+      "PaymentRequestResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PaymentRequest"
+          }
+        }
+      },
+      "PaymentRequestCollectionResponse": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentRequest"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "required": ["current_page", "per_page", "total", "last_page"],
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "example": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "example": 15
+          },
+          "total": {
+            "type": "integer",
+            "example": 1
+          },
+          "last_page": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "required": ["message", "errors"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "The given data was invalid."
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
