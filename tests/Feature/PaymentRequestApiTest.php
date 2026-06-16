@@ -30,6 +30,13 @@ class PaymentRequestApiTest extends TestCase
         $this->bindExchangeRateProvider();
     }
 
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_payment_request_creation_requires_authentication(): void
     {
         $this->postJson('/api/payment-requests', $this->validPayload())
@@ -142,6 +149,40 @@ class PaymentRequestApiTest extends TestCase
             ->assertJsonPath('data.review.review_note', 'Approved for reimbursement.');
     }
 
+    public function test_expired_payment_request_cannot_be_approved_even_before_expiration_command_runs(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-14 10:00:00'));
+
+        $employee = $this->employee();
+        Passport::actingAs($employee, ['payments:create'], 'api');
+        $id = $this->postJson('/api/payment-requests', $this->validPayload())->assertCreated()->json('data.id');
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-16 10:00:01'));
+        Passport::actingAs($this->finance(), ['payments:approve'], 'api');
+
+        $this->postJson('/api/payment-requests/'.$id.'/approval')
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Only unexpired pending payment requests can be approved.');
+
+    }
+
+    public function test_expired_payment_request_cannot_be_rejected_even_before_expiration_command_runs(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-14 10:00:00'));
+
+        $employee = $this->employee();
+        Passport::actingAs($employee, ['payments:create'], 'api');
+        $id = $this->postJson('/api/payment-requests', $this->validPayload())->assertCreated()->json('data.id');
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-16 10:00:01'));
+        Passport::actingAs($this->finance(), ['payments:approve'], 'api');
+
+        $this->postJson('/api/payment-requests/'.$id.'/rejection')
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Only unexpired pending payment requests can be rejected.');
+
+    }
+
     public function test_non_finance_user_cannot_approve_payment_request(): void
     {
         $employee = $this->employee();
@@ -165,7 +206,7 @@ class PaymentRequestApiTest extends TestCase
 
         $this->postJson('/api/payment-requests/'.$id.'/rejection')
             ->assertStatus(409)
-            ->assertJsonPath('message', 'Only pending payment requests can be rejected.');
+            ->assertJsonPath('message', 'Only unexpired pending payment requests can be rejected.');
     }
 
     public function test_exchange_rate_provider_failure_returns_service_unavailable(): void

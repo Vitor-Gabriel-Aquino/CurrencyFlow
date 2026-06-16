@@ -16,6 +16,11 @@ interface PaymentRequestRepository
 
     public function find(string $paymentRequestId): ?PaymentRequestRecord;
 
+    /**
+     * @return string[]
+     */
+    public function findExpiredPendingIds(CarbonImmutable $now, int $limit): array;
+
     public function approvePending(string $paymentRequestId, ReviewPaymentRequestData $data): ?PaymentRequestRecord;
 
     public function rejectPending(string $paymentRequestId, ReviewPaymentRequestData $data): ?PaymentRequestRecord;

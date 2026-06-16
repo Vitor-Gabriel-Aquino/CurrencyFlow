@@ -175,6 +175,20 @@ Run tests:
 docker compose exec app php artisan test
 ```
 
+Expire pending payment requests manually:
+
+```bash
+docker compose exec app php artisan payment-requests:expire-pending
+```
+
+Run the Laravel scheduler locally:
+
+```bash
+docker compose exec app php artisan schedule:work
+```
+
+The scheduler runs `payment-requests:expire-pending` hourly. The command processes expired pending requests in batches and leaves approved or rejected requests unchanged.
+
 Clear Laravel configuration cache if environment changes are not reflected:
 
 ```bash

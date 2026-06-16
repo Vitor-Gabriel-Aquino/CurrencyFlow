@@ -81,7 +81,7 @@ class PaymentRequestController extends Controller
 
         if (! $record) {
             return response()->json([
-                'message' => 'Only pending payment requests can be approved.',
+                'message' => 'Only unexpired pending payment requests can be approved.',
             ], 409);
         }
 
@@ -106,7 +106,7 @@ class PaymentRequestController extends Controller
 
         if (! $record) {
             return response()->json([
-                'message' => 'Only pending payment requests can be rejected.',
+                'message' => 'Only unexpired pending payment requests can be rejected.',
             ], 409);
         }
 
