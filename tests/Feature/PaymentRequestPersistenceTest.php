@@ -75,10 +75,10 @@ class PaymentRequestPersistenceTest extends TestCase
         $paymentRequestModel->save();
     }
 
-    public function test_finance_review_can_only_approve_pending_payment_requests(): void
+    public function test_pending_payment_request_can_be_approved(): void
     {
         $paymentRequest = $this->createPaymentRequest();
-        $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+        $finance = $this->finance();
 
         $approvedPaymentRequest = $this->repository->approvePending(
             $paymentRequest->id,
@@ -93,6 +93,21 @@ class PaymentRequestPersistenceTest extends TestCase
         $this->assertSame(PaymentRequestStatus::Approved->value, $approvedPaymentRequest->status);
         $this->assertSame($finance->id, $approvedPaymentRequest->reviewedBy);
         $this->assertSame('Approved for reimbursement.', $approvedPaymentRequest->reviewNote);
+    }
+
+    public function test_approved_payment_request_cannot_be_rejected(): void
+    {
+        $paymentRequest = $this->createPaymentRequest();
+        $finance = $this->finance();
+
+        $this->repository->approvePending(
+            $paymentRequest->id,
+            new ReviewPaymentRequestData(
+                reviewerId: $finance->id,
+                reviewNote: 'Approved for reimbursement.',
+                reviewedAt: CarbonImmutable::parse('2026-06-14 11:00:00'),
+            ),
+        );
 
         $rejectedPaymentRequest = $this->repository->rejectPending(
             $paymentRequest->id,
@@ -110,9 +125,10 @@ class PaymentRequestPersistenceTest extends TestCase
         );
     }
 
-    public function test_expiration_can_only_change_pending_payment_requests(): void
+    public function test_pending_payment_request_can_expire_after_due_time(): void
     {
         $paymentRequest = $this->createPaymentRequest();
+
         $expiredPaymentRequest = $this->repository->expirePending(
             $paymentRequest->id,
             CarbonImmutable::parse('2026-06-16 10:00:01'),
@@ -120,6 +136,15 @@ class PaymentRequestPersistenceTest extends TestCase
 
         $this->assertNotNull($expiredPaymentRequest);
         $this->assertSame(PaymentRequestStatus::Expired->value, $expiredPaymentRequest->status);
+    }
+
+    public function test_expired_payment_request_cannot_expire_again(): void
+    {
+        $paymentRequest = $this->createPaymentRequest();
+        $this->repository->expirePending(
+            $paymentRequest->id,
+            CarbonImmutable::parse('2026-06-16 10:00:01'),
+        );
 
         $secondExpirationAttempt = $this->repository->expirePending(
             $paymentRequest->id,
@@ -167,5 +192,10 @@ class PaymentRequestPersistenceTest extends TestCase
             exchangeRateFetchedAt: CarbonImmutable::parse('2026-06-14 10:00:00'),
             expiresAt: CarbonImmutable::parse('2026-06-16 10:00:00'),
         ));
+    }
+
+    private function finance(): User
+    {
+        return User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
     }
 }
