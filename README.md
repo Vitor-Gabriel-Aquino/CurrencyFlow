@@ -225,19 +225,25 @@ curl -X POST "http://localhost:8000/api/payment-requests/<payment_request_id>/ap
 
 Pending payment requests expire automatically after the review window passes.
 
+The Docker setup starts a dedicated scheduler container automatically:
+
+```bash
+docker compose up -d --build
+```
+
 Run expiration manually:
 
 ```bash
 docker compose exec app php artisan payment-requests:expire-pending
 ```
 
-Run the Laravel scheduler locally:
+If you are not using Docker Compose, run the Laravel scheduler manually:
 
 ```bash
-docker compose exec app php artisan schedule:work
+php artisan schedule:work
 ```
 
-The scheduler runs `payment-requests:expire-pending` hourly. The command processes requests in batches and does not overwrite approved or rejected requests.
+The scheduler runs `payment-requests:expire-pending` every minute. The command processes requests in batches and does not overwrite approved or rejected requests.
 
 ## Tests
 
@@ -374,7 +380,7 @@ Suggested walkthrough for a short demo:
 7. Authenticate as finance.
 8. List all payment requests.
 9. Approve or reject a pending request.
-10. Run `payment-requests:expire-pending` and show that finalized requests are not overwritten.
+10. Show that the scheduler container runs automatically and that finalized requests are not overwritten by expiration.
 11. Run `docker compose exec app php artisan test`.
 
 ## Development Workflow

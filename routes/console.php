@@ -8,4 +8,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('payment-requests:expire-pending')->hourly();
+Schedule::command('payment-requests:expire-pending')->everyMinute();
