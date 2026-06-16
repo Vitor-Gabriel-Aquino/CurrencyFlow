@@ -2,42 +2,68 @@
 
 CurrencyFlow is a Laravel 12 backend for managing multi-currency payment requests.
 
-It supports authenticated employees creating payment requests in local currencies, exchange rate capture at creation time, and finance approval workflows.
+Employees can create payment requests in local currencies, the API captures the EUR exchange rate snapshot at creation time, and finance users can approve, reject, or let pending requests expire.
 
-## Current Status
+## Features
 
-Authentication foundation phase.
+- OAuth 2.0 Authorization Code Grant with PKCE using Laravel Passport.
+- Employee and finance roles.
+- UUID public identifiers for API resources.
+- Country and currency reference data.
+- Payment request creation with live EUR-to-local exchange rate capture.
+- Immutable exchange rate snapshots for financial auditability.
+- Approval, rejection, and expiration workflows.
+- Scheduled expiration of pending requests after the review window passes.
+- RESTful JSON API with OpenAPI and Postman documentation.
+- Docker Compose setup with PostgreSQL.
+- Feature, integration, PostgreSQL, and optional external API tests.
 
-Implemented so far:
+## Stack
 
-- Laravel 12 project initialized.
-- PHP 8.2+ requirement verified locally with PHP 8.4.19.
-- PostgreSQL environment variables prepared.
-- Docker Compose local environment configured.
-- Local migrations and tests can run inside Docker.
-- Laravel Passport configured for OAuth 2.0 Authorization Code Grant with PKCE.
-- UUIDs configured for public user identifiers.
-- Minimal registration, login, logout, and protected user endpoints implemented.
-
-## Planned Stack
-
-- Laravel 12
 - PHP 8.2+
-- PostgreSQL
-- Laravel Passport with OAuth 2.0 Authorization Code Grant and PKCE
-- RESTful API design
-- OpenAPI documentation
-- Docker Compose for local development
+- Laravel 12
+- PostgreSQL 16
+- Laravel Passport
+- Docker Compose
+- PHPUnit
+- OpenAPI 3.1
+
+## Architecture
+
+CurrencyFlow uses a pragmatic Clean Architecture adapted to Laravel:
+
+- `app/Domain`: business concepts, enums, value objects, data objects, and contracts.
+- `app/Application`: use cases and application orchestration.
+- `app/Infrastructure`: Eloquent persistence, transactions, and external providers.
+- `app/Http`: controllers, form requests, resources, and HTTP entry points.
+
+Important decisions:
+
+- Controllers stay thin and delegate business flows to application use cases.
+- Repository contracts live in the domain when persistence behavior protects business rules.
+- Eloquent implementations live in infrastructure.
+- Payment request approval, rejection, and expiration use transactions and row-level locking to avoid race conditions.
+- Exchange rate snapshots are protected both in the Eloquent model and by a PostgreSQL trigger.
+- `payment_requests.eur_exchange_rate` stores the EUR to local currency rate used at creation time.
+
+More details:
+
+```text
+docs/architecture.md
+docs/database-diagram.md
+```
 
 ## Requirements
 
-- PHP 8.2 or higher
-- Composer
 - Git
 - Docker
 - Docker Compose
 
-## Local Setup
+Local PHP and Composer are optional because the preferred workflow runs inside Docker.
+
+## Quick Start
+
+Clone the repository and enter the project directory.
 
 Copy the environment file if needed:
 
@@ -45,103 +71,205 @@ Copy the environment file if needed:
 cp .env.example .env
 ```
 
-Start the Docker environment:
+Start the environment:
 
 ```bash
 docker compose up -d --build
 ```
 
-Run migrations and seed local development data:
+Run migrations and seed local data:
 
 ```bash
-docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
-Open:
+Open the application:
 
 ```text
-http://127.0.0.1:8000
+http://localhost:8000
 ```
 
-The application container creates `.env`, installs Composer dependencies, and generates `APP_KEY` when needed.
+## Seeded Access
 
-The local seeders create:
-
-- a public OAuth client for the future frontend;
-- a development user:
-  - email: `test@example.com`
-  - password: `password`
-
-## Local Setup Without Docker
-
-The preferred local workflow uses Docker. If PHP and Composer are installed locally, the application can also be started with:
-
-```bash
-composer install
-php artisan key:generate
-php artisan serve
-```
+All seeded users use this password:
 
 ```text
-http://127.0.0.1:8000
+password
 ```
 
-## Environment Notes
+Seeded users:
 
-The project is configured for PostgreSQL:
+| Email | Role | Country | Currency |
+| --- | --- | --- | --- |
+| `test@example.com` | employee | Portugal | EUR |
+| `ana.silva@example.com` | employee | Brazil | BRL |
+| `john.carter@example.com` | employee | United States | USD |
+| `emily.brown@example.com` | employee | United Kingdom | GBP |
+| `yuki.tanaka@example.com` | employee | Japan | JPY |
+| `marta.kowalska@example.com` | finance | Poland | PLN |
 
-```env
-DB_CONNECTION=pgsql
-DB_HOST=postgres
-DB_PORT=5432
-DB_DATABASE=currencyflow
-DB_USERNAME=currencyflow
-DB_PASSWORD=secret
+Seeded OAuth public client:
+
+```text
+Client ID: 019ec29e-86dc-70bd-9de9-157bc6e2f735
+Redirect URI: http://localhost:3000/auth/callback
 ```
 
-For host tools outside Docker, PostgreSQL is forwarded to:
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT_FORWARD=5432
-```
-
-Sessions use the database driver:
-
-```env
-SESSION_DRIVER=database
-```
-
-The database session driver keeps local behavior close to production and supports the web login and OAuth authorization consent flow.
-
-## OAuth Authentication
+## OAuth PKCE
 
 CurrencyFlow uses Laravel Passport with OAuth 2.0 Authorization Code Grant and PKCE.
 
-The backend owns:
+The backend provides:
 
-- country and currency discovery through `GET /api/countries` and `GET /api/currencies`;
-- user registration through `POST /api/register`;
 - browser login through `GET /login` and `POST /login`;
 - OAuth authorization through `GET /oauth/authorize`;
 - token exchange through `POST /oauth/token`;
-- authenticated API access through Bearer tokens at endpoints such as `GET /api/user`.
+- authenticated API access through Bearer tokens;
 - token revocation through `DELETE /api/tokens/current`.
 
-The frontend will own the PKCE client flow:
+The frontend or API client is responsible for the PKCE flow:
 
 1. Generate a temporary `code_verifier`.
-2. Derive a `code_challenge` from the verifier.
-3. Redirect the user to `/oauth/authorize` with the public client ID, redirect URI, requested scopes, `code_challenge`, and `state`.
-4. Receive the authorization `code` on the frontend callback URL.
+2. Derive a `code_challenge`.
+3. Redirect the user to `/oauth/authorize` with the public client ID, redirect URI, requested scopes, code challenge, and state.
+4. Receive the authorization `code` on the callback URL.
 5. Exchange the authorization code and `code_verifier` at `/oauth/token`.
-6. Use the returned `access_token` as `Authorization: Bearer <token>` for protected API requests.
+6. Use `Authorization: Bearer <access_token>` for protected API requests.
 
-The frontend may request these initial scopes:
+Available scopes:
 
 - `payments:read`
 - `payments:create`
 - `payments:approve`
+
+Postman instructions:
+
+```text
+docs/postman/oauth-pkce.md
+```
+
+## API Documentation
+
+OpenAPI specification:
+
+```text
+docs/openapi.json
+```
+
+Postman collection:
+
+```text
+docs/postman/CurrencyFlow.postman_collection.json
+```
+
+Main API endpoints:
+
+| Method | Endpoint | Auth |
+| --- | --- | --- |
+| `GET` | `/api/countries` | public |
+| `GET` | `/api/currencies` | public |
+| `POST` | `/api/register` | public |
+| `GET` | `/api/user` | Bearer token |
+| `DELETE` | `/api/tokens/current` | Bearer token |
+| `POST` | `/api/payment-requests` | `payments:create` |
+| `GET` | `/api/payment-requests` | `payments:read` |
+| `GET` | `/api/payment-requests/{id}` | `payments:read` |
+| `POST` | `/api/payment-requests/{id}/approval` | `payments:approve` + finance role |
+| `POST` | `/api/payment-requests/{id}/rejection` | `payments:approve` + finance role |
+
+List payment requests by status:
+
+```http
+GET /api/payment-requests?status=pending
+GET /api/payment-requests?status=approved
+GET /api/payment-requests?status=rejected
+GET /api/payment-requests?status=expired
+```
+
+## Quick API Examples
+
+Create a payment request:
+
+```bash
+curl -X POST "http://localhost:8000/api/payment-requests" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{
+    "title": "Conference reimbursement",
+    "description": "Hotel and local transportation costs.",
+    "amount": "123.45",
+    "currency_code": "BRL"
+  }'
+```
+
+List pending payment requests:
+
+```bash
+curl "http://localhost:8000/api/payment-requests?status=pending" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Approve a payment request:
+
+```bash
+curl -X POST "http://localhost:8000/api/payment-requests/<payment_request_id>/approval" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"review_note":"Approved for reimbursement."}'
+```
+
+## Scheduler
+
+Pending payment requests expire automatically after the review window passes.
+
+Run expiration manually:
+
+```bash
+docker compose exec app php artisan payment-requests:expire-pending
+```
+
+Run the Laravel scheduler locally:
+
+```bash
+docker compose exec app php artisan schedule:work
+```
+
+The scheduler runs `payment-requests:expire-pending` hourly. The command processes requests in batches and does not overwrite approved or rejected requests.
+
+## Tests
+
+Run the full test suite:
+
+```bash
+docker compose exec app php artisan test
+```
+
+Run feature tests:
+
+```bash
+docker compose exec app php artisan test --testsuite=Feature
+```
+
+Useful focused checks:
+
+```bash
+docker compose exec app php artisan test --filter=AuthFlowTest
+docker compose exec app php artisan test --filter=PaymentRequestApiTest
+docker compose exec app php artisan test --filter=PaymentRequestPersistenceTest
+docker compose exec app php artisan test --filter=ExpirePendingPaymentRequestsCommandTest
+docker compose exec app php artisan test --filter=ExchangeRateProviderTest
+```
+
+Run the optional external exchange rate smoke test:
+
+```bash
+docker compose exec -e RUN_EXTERNAL_API_TESTS=true app php artisan test --testsuite=External
+```
+
+The external smoke test is skipped by default to avoid making the standard suite depend on internet access, provider uptime, or rate limits.
 
 ## Useful Commands
 
@@ -157,7 +285,7 @@ Check PHP:
 docker compose exec app php -v
 ```
 
-Run migrations:
+Run migrations and seeders:
 
 ```bash
 docker compose exec app php artisan migrate --seed
@@ -169,55 +297,89 @@ Rebuild the local database:
 docker compose exec app php artisan migrate:fresh --seed
 ```
 
-Run tests:
+List routes:
 
 ```bash
-docker compose exec app php artisan test
+docker compose exec app php artisan route:list
 ```
 
-Expire pending payment requests manually:
-
-```bash
-docker compose exec app php artisan payment-requests:expire-pending
-```
-
-Run the Laravel scheduler locally:
-
-```bash
-docker compose exec app php artisan schedule:work
-```
-
-The scheduler runs `payment-requests:expire-pending` hourly. The command processes expired pending requests in batches and leaves approved or rejected requests unchanged.
-
-Clear Laravel configuration cache if environment changes are not reflected:
+Clear configuration cache:
 
 ```bash
 docker compose exec app php artisan config:clear
 ```
 
-## API Documentation
+## Troubleshooting
 
-The OpenAPI specification is available at:
+### Docker cannot connect to PostgreSQL
 
-```text
-docs/openapi.json
+Make sure the containers are running:
+
+```bash
+docker compose ps
 ```
 
-The Postman collection for local API testing is available at:
+If needed, rebuild the environment:
 
-```text
-docs/postman/CurrencyFlow.postman_collection.json
+```bash
+docker compose up -d --build
 ```
 
-Instructions for testing OAuth PKCE with Postman are available at:
+### Missing application key
+
+The app container generates `APP_KEY` automatically when `.env` does not contain one. If needed, run:
+
+```bash
+docker compose exec app php artisan key:generate
+```
+
+### Environment values are not reflected
+
+Clear Laravel configuration cache:
+
+```bash
+docker compose exec app php artisan config:clear
+```
+
+### Database state is stale
+
+Recreate the local schema and seed data:
+
+```bash
+docker compose exec app php artisan migrate:fresh --seed
+```
+
+### OAuth authorization redirects to localhost:3000
+
+That is the seeded frontend callback URL. Until a separate frontend exists, use the Postman guide to copy the authorization `code` from the callback URL:
 
 ```text
 docs/postman/oauth-pkce.md
 ```
+
+### Exchange rate provider fails
+
+Payment request creation returns `503` if the external provider is unavailable or returns an unexpected payload. This is intentional because fake exchange rates must not be used in production flows.
+
+## Demo Script
+
+Suggested walkthrough for a short demo:
+
+1. Start Docker and run `migrate:fresh --seed`.
+2. Show the OpenAPI spec and Postman collection.
+3. Use Postman to complete OAuth PKCE and store the access token.
+4. Call `GET /api/user`.
+5. Create a payment request as an employee.
+6. List payment requests as employee and show ownership filtering.
+7. Authenticate as finance.
+8. List all payment requests.
+9. Approve or reject a pending request.
+10. Run `payment-requests:expire-pending` and show that finalized requests are not overwritten.
+11. Run `docker compose exec app php artisan test`.
 
 ## Development Workflow
 
 - Use one branch per delivery or feature.
 - Use branch names in English and kebab-case, such as `feat/payment-request-api`.
 - Use Conventional Commits.
-- Keep documentation and code in English.
+- Keep code, docs, API responses, seed data, and commit messages in English.
