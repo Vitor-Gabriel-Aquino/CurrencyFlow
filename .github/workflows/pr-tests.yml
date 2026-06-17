@@ -1,0 +1,85 @@
+name: Pull Request Tests
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Laravel test suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: currencyflow
+          POSTGRES_USER: currencyflow
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U currencyflow -d currencyflow"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: bcmath, intl, mbstring, pcntl, pdo_pgsql, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan passport:keys --force
+
+      - name: Run PostgreSQL migrations for integration tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: currencyflow
+          DB_USERNAME: currencyflow
+          DB_PASSWORD: secret
+        run: php artisan migrate --force --database=pgsql
+
+      - name: Run test suite
+        env:
+          CURRENCYFLOW_PGSQL_HOST: 127.0.0.1
+          CURRENCYFLOW_PGSQL_PORT: 5432
+          CURRENCYFLOW_PGSQL_DATABASE: currencyflow
+          CURRENCYFLOW_PGSQL_USERNAME: currencyflow
+          CURRENCYFLOW_PGSQL_PASSWORD: secret
+        run: php artisan test
