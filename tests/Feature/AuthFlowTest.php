@@ -131,6 +131,7 @@ class AuthFlowTest extends TestCase
                 '_token' => 'test-token',
                 'name' => 'Partner Portal',
                 'redirect_uri' => 'https://partner.example.com/auth/callback',
+                'allowed_cors_origin' => 'https://partner.example.com',
             ])
             ->assertRedirect('/developer/oauth-clients')
             ->assertSessionHas('created_client_id');
@@ -141,6 +142,49 @@ class AuthFlowTest extends TestCase
             'provider' => 'users',
             'revoked' => false,
         ]);
+        $this->assertDatabaseHas('oauth_client_cors_origins', [
+            'origin' => 'https://partner.example.com',
+        ]);
+    }
+
+    public function test_oauth_client_creation_rejects_cors_origin_with_path(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+
+        $this->actingAs($finance)
+            ->withSession(['_token' => 'test-token'])
+            ->post('/developer/oauth-clients', [
+                '_token' => 'test-token',
+                'name' => 'Partner Portal',
+                'redirect_uri' => 'https://partner.example.com/auth/callback',
+                'allowed_cors_origin' => 'https://partner.example.com/app',
+            ])
+            ->assertSessionHasErrors('allowed_cors_origin');
+    }
+
+    public function test_oauth_client_creation_rejects_plain_http_cors_origin_outside_localhost(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+
+        $this->actingAs($finance)
+            ->withSession(['_token' => 'test-token'])
+            ->post('/developer/oauth-clients', [
+                '_token' => 'test-token',
+                'name' => 'Partner Portal',
+                'redirect_uri' => 'https://partner.example.com/auth/callback',
+                'allowed_cors_origin' => 'http://partner.example.com',
+            ])
+            ->assertSessionHasErrors('allowed_cors_origin');
     }
 
     public function test_finance_user_can_revoke_oauth_client(): void

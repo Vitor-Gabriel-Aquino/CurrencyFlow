@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreOAuthClientFormRequest;
+use App\Models\OAuthClientCorsOrigin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,24 +22,39 @@ class OAuthClientController extends Controller
         $clients = Client::query()
             ->latest()
             ->get();
+        $allowedOrigins = OAuthClientCorsOrigin::query()
+            ->whereIn('oauth_client_id', $clients->pluck('id'))
+            ->orderBy('origin')
+            ->get()
+            ->groupBy('oauth_client_id');
 
         return view('developer.oauth-clients.index', [
             'clients' => $clients,
+            'allowedOrigins' => $allowedOrigins,
         ]);
     }
 
     public function store(StoreOAuthClientFormRequest $request): RedirectResponse
     {
-        $client = Client::query()->create([
-            'owner_id' => null,
-            'owner_type' => null,
-            'name' => $request->validated('name'),
-            'secret' => null,
-            'provider' => 'users',
-            'redirect_uris' => [$request->validated('redirect_uri')],
-            'grant_types' => ['authorization_code', 'refresh_token'],
-            'revoked' => false,
-        ]);
+        $client = DB::transaction(function () use ($request): Client {
+            $client = Client::query()->create([
+                'owner_id' => null,
+                'owner_type' => null,
+                'name' => $request->validated('name'),
+                'secret' => null,
+                'provider' => 'users',
+                'redirect_uris' => [$request->validated('redirect_uri')],
+                'grant_types' => ['authorization_code', 'refresh_token'],
+                'revoked' => false,
+            ]);
+
+            OAuthClientCorsOrigin::query()->create([
+                'oauth_client_id' => $client->id,
+                'origin' => $request->validated('allowed_cors_origin'),
+            ]);
+
+            return $client;
+        });
 
         return redirect()
             ->route('developer.oauth-clients.index')

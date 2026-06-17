@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\OAuthClientCorsOrigin;
 use Illuminate\Database\Seeder;
 use Laravel\Passport\Client;
 
@@ -11,7 +12,7 @@ class OAuthClientSeeder extends Seeder
 
     public function run(): void
     {
-        Client::query()->updateOrCreate(
+        $client = Client::query()->updateOrCreate(
             ['id' => self::FRONTEND_CLIENT_ID],
             [
                 'owner_id' => null,
@@ -22,6 +23,16 @@ class OAuthClientSeeder extends Seeder
                 'redirect_uris' => ['http://localhost:3000/auth/callback'],
                 'grant_types' => ['authorization_code', 'refresh_token'],
                 'revoked' => false,
+            ],
+        );
+
+        OAuthClientCorsOrigin::query()->updateOrCreate(
+            [
+                'oauth_client_id' => $client->id,
+                'origin' => 'http://localhost:3000',
+            ],
+            [
+                'origin' => 'http://localhost:3000',
             ],
         );
     }

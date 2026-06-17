@@ -133,7 +133,9 @@ Finance users can create additional public PKCE clients from the web portal:
 http://localhost:8000/developer/oauth-clients
 ```
 
-The portal creates public clients without `client_secret`, intended for browser-based frontends using Authorization Code with PKCE. Confidential clients, homepage URLs, and secret rotation are intentionally outside this first portal version.
+The portal creates public clients without `client_secret`, intended for browser-based frontends using Authorization Code with PKCE. Each browser client must also register its allowed CORS origin, for example `http://localhost:3000` or `https://app.example.com`. The origin must include only scheme, host, and optional port.
+
+Confidential clients, homepage URLs, and secret rotation are intentionally outside this first portal version.
 
 Revoking a client in this portal disables that client for future OAuth flows and also revokes every access token and refresh token already issued to it. This follows Laravel Passport's token revocation guidance and avoids leaving previously issued credentials active after a client has been disabled.
 
@@ -145,6 +147,14 @@ The frontend or API client is responsible for the PKCE flow:
 4. Receive the authorization `code` on the callback URL.
 5. Exchange the authorization code and `code_verifier` at `/oauth/token`.
 6. Use `Authorization: Bearer <access_token>` for protected API requests.
+
+For browser-based frontends, CORS is resolved from the registered OAuth client origins. The seeded local frontend client includes this allowed origin:
+
+```text
+http://localhost:3000
+```
+
+Revoked clients are ignored by the CORS middleware, so their registered origins stop receiving CORS access for `/oauth/token` and protected `/api/*` routes.
 
 Available scopes:
 
