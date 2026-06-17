@@ -287,6 +287,18 @@ docker compose exec -e RUN_EXTERNAL_API_TESTS=true app php artisan test --testsu
 
 The external smoke test is skipped by default to avoid making the standard suite depend on internet access, provider uptime, or rate limits.
 
+## Continuous Integration
+
+Pull requests targeting `master` run the GitHub Actions workflow in `.github/workflows/pr-tests.yml`.
+
+The workflow installs Composer dependencies with cache, prepares the Laravel application, generates Passport keys, runs PostgreSQL migrations for integration tests, and executes:
+
+```bash
+php artisan test
+```
+
+A failed workflow means the pull request should not be merged until the failing tests are fixed. The external exchange rate smoke test remains skipped unless `RUN_EXTERNAL_API_TESTS=true` is explicitly provided.
+
 ## Useful Commands
 
 Check Laravel:
