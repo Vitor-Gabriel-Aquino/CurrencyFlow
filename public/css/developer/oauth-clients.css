@@ -142,6 +142,23 @@ input:focus {
     margin-bottom: 10px;
 }
 
+.client-metadata {
+    display: grid;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.client-metadata span {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.client-metadata em {
+    color: var(--muted);
+    font-style: normal;
+}
+
 .client-actions {
     display: flex;
     align-items: center;

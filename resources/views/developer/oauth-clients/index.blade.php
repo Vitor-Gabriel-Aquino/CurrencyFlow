@@ -65,6 +65,14 @@
                     @enderror
                 </div>
 
+                <div class="field">
+                    <label for="allowed_cors_origin">Allowed CORS origin</label>
+                    <input id="allowed_cors_origin" name="allowed_cors_origin" type="url" value="{{ old('allowed_cors_origin', 'http://localhost:3000') }}" maxlength="255" required>
+                    @error('allowed_cors_origin')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <button class="button-primary" type="submit">Create public client</button>
             </form>
 
@@ -74,9 +82,20 @@
                         <div>
                             <h2>{{ $client->name }}</h2>
                             <p>{{ $client->id }}</p>
-                            @foreach ($client->redirect_uris as $redirectUri)
-                                <code>{{ $redirectUri }}</code>
-                            @endforeach
+                            <div class="client-metadata">
+                                <span>Redirect URIs</span>
+                                @foreach ($client->redirect_uris as $redirectUri)
+                                    <code>{{ $redirectUri }}</code>
+                                @endforeach
+                            </div>
+                            <div class="client-metadata">
+                                <span>Allowed CORS origins</span>
+                                @forelse ($allowedOrigins->get($client->id, collect()) as $origin)
+                                    <code>{{ $origin->origin }}</code>
+                                @empty
+                                    <em>No origins registered</em>
+                                @endforelse
+                            </div>
                         </div>
 
                         <div class="client-actions">
