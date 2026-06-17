@@ -163,7 +163,7 @@ Grant Type: Authorization Code (With PKCE)
 Auth URL: http://localhost:8000/oauth/authorize
 Access Token URL: http://localhost:8000/oauth/token
 Client ID: 019ec29e-86dc-70bd-9de9-157bc6e2f735
-Scope: payments:read payments:create payments:approve
+Scope: profile:read profile:update payments:read payments:create payments:approve
 Code Challenge Method: SHA-256
 Client Authentication: Send client credentials in body
 ```

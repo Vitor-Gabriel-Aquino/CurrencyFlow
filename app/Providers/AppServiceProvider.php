@@ -34,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
         Passport::authorizationView('auth.authorize');
 
         Passport::tokensCan([
+            'profile:read' => 'Read the authenticated user profile',
+            'profile:update' => 'Update the authenticated user profile',
             'payments:read' => 'Read payment requests',
             'payments:create' => 'Create payment requests',
             'payments:approve' => 'Approve or reject payment requests',

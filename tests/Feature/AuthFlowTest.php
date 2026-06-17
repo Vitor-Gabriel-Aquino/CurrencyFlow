@@ -6,6 +6,7 @@ use App\Models\User;
 use Database\Seeders\ReferenceDataSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Passport\Client;
 use Laravel\Passport\RefreshToken;
 use Laravel\Passport\Token;
@@ -203,6 +204,15 @@ class AuthFlowTest extends TestCase
             ->assertJsonPath('message', 'Unauthenticated.');
     }
 
+    public function test_current_user_update_route_requires_authentication(): void
+    {
+        $this->patchJson('/api/user', [
+            'name' => 'Updated Name',
+        ])
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
     public function test_current_user_route_returns_controlled_response_shape(): void
     {
         $user = User::factory()->create([
@@ -210,7 +220,7 @@ class AuthFlowTest extends TestCase
             'password' => 'password',
         ]);
 
-        $token = $this->issueAccessTokenFor($user);
+        $token = $this->issueAccessTokenFor($user, 'profile:read');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/user')
@@ -234,6 +244,148 @@ class AuthFlowTest extends TestCase
             ]);
     }
 
+    public function test_current_user_route_requires_profile_read_scope(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'payments:read');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/user')
+            ->assertForbidden();
+    }
+
+    public function test_current_user_can_update_profile(): void
+    {
+        $this->seed(ReferenceDataSeeder::class);
+
+        $user = User::factory()->create([
+            'name' => 'Original Name',
+            'email' => 'original@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'profile:update');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/user', [
+                'name' => 'Updated Employee',
+                'email' => 'updated@example.com',
+                'country_code' => 'br',
+                'preferred_currency_code' => 'brl',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.id', $user->id)
+            ->assertJsonPath('data.name', 'Updated Employee')
+            ->assertJsonPath('data.email', 'updated@example.com')
+            ->assertJsonPath('data.role', 'employee')
+            ->assertJsonPath('data.country.code', 'BR')
+            ->assertJsonPath('data.preferred_currency.code', 'BRL');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Updated Employee',
+            'email' => 'updated@example.com',
+        ]);
+    }
+
+    public function test_current_user_update_requires_profile_update_scope(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'profile:read');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/user', [
+                'name' => 'Updated Employee',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_current_user_update_rejects_duplicate_email(): void
+    {
+        $existingUser = User::factory()->create([
+            'email' => 'existing@example.com',
+        ]);
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'profile:update');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/user', [
+                'email' => $existingUser->email,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+    }
+
+    public function test_current_user_can_update_password_with_current_password(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'profile:update');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/user', [
+                'current_password' => 'password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.email', 'employee@example.com');
+
+        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+    }
+
+    public function test_current_user_password_update_requires_current_password(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'profile:update');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/user', [
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+    }
+
+    public function test_current_user_password_update_rejects_invalid_current_password(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+        ]);
+
+        $token = $this->issueAccessTokenFor($user, 'profile:update');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/user', [
+                'current_password' => 'wrong-password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+    }
+
     public function test_current_access_token_can_be_revoked(): void
     {
         $user = User::factory()->create([
@@ -241,7 +393,7 @@ class AuthFlowTest extends TestCase
             'password' => 'password',
         ]);
 
-        $token = $this->issueAccessTokenFor($user);
+        $token = $this->issueAccessTokenFor($user, 'profile:read');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->deleteJson('/api/tokens/current')
@@ -279,7 +431,7 @@ class AuthFlowTest extends TestCase
                 'client_id' => $client->id,
                 'redirect_uri' => 'http://localhost:3000/auth/callback',
                 'response_type' => 'code',
-                'scope' => 'payments:read payments:create',
+                'scope' => 'profile:read payments:read payments:create',
                 'code_challenge' => $codeChallenge,
                 'code_challenge_method' => 'S256',
                 'state' => 'phpunit-test',
@@ -288,6 +440,7 @@ class AuthFlowTest extends TestCase
         $authorizeResponse
             ->assertOk()
             ->assertSee('CurrencyFlow Frontend')
+            ->assertSee('Read the authenticated user profile')
             ->assertSee('Read payment requests')
             ->assertSee('Create payment requests');
 

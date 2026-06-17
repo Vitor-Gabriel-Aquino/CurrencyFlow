@@ -153,6 +153,46 @@
           }
         },
         {
+          "name": "Update Current User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Updated Employee\",\n  \"email\": \"jane.updated@example.com\",\n  \"country_code\": \"BR\",\n  \"preferred_currency_code\": \"BRL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user"]
+            }
+          }
+        },
+        {
           "name": "Revoke Current Token",
           "request": {
             "auth": {
@@ -190,7 +230,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/oauth/authorize?client_id={{client_id}}&redirect_uri={{frontend_redirect_uri}}&response_type=code&scope=payments%3Aread%20payments%3Acreate%20payments%3Aapprove&code_challenge={{code_challenge}}&code_challenge_method=S256&state=postman-test",
+              "raw": "{{base_url}}/oauth/authorize?client_id={{client_id}}&redirect_uri={{frontend_redirect_uri}}&response_type=code&scope=profile%3Aread%20profile%3Aupdate%20payments%3Aread%20payments%3Acreate%20payments%3Aapprove&code_challenge={{code_challenge}}&code_challenge_method=S256&state=postman-test",
               "host": ["{{base_url}}"],
               "path": ["oauth", "authorize"],
               "query": [
@@ -208,7 +248,7 @@
                 },
                 {
                   "key": "scope",
-                  "value": "payments%3Aread%20payments%3Acreate%20payments%3Aapprove"
+                  "value": "profile%3Aread%20profile%3Aupdate%20payments%3Aread%20payments%3Acreate%20payments%3Aapprove"
                 },
                 {
                   "key": "code_challenge",

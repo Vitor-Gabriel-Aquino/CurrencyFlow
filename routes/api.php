@@ -13,7 +13,8 @@ Route::get('/currencies', [CurrencyController::class, 'index']);
 Route::post('/register', [AuthController::class, 'register'])
     ->middleware('throttle:5,1');
 
-Route::middleware('auth:api')->get('/user', [AuthController::class, 'currentUser']);
+Route::middleware(['auth:api', CheckToken::class.':profile:read'])->get('/user', [AuthController::class, 'currentUser']);
+Route::middleware(['auth:api', CheckToken::class.':profile:update'])->patch('/user', [AuthController::class, 'updateCurrentUser']);
 
 Route::middleware('auth:api')->delete('/tokens/current', [AuthController::class, 'revokeToken']);
 

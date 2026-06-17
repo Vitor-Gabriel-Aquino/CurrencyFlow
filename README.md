@@ -148,6 +148,8 @@ The frontend or API client is responsible for the PKCE flow:
 
 Available scopes:
 
+- `profile:read`
+- `profile:update`
 - `payments:read`
 - `payments:create`
 - `payments:approve`
@@ -179,7 +181,8 @@ Main API endpoints:
 | `GET` | `/api/countries` | public |
 | `GET` | `/api/currencies` | public |
 | `POST` | `/api/register` | public |
-| `GET` | `/api/user` | Bearer token |
+| `GET` | `/api/user` | `profile:read` |
+| `PATCH` | `/api/user` | `profile:update` |
 | `DELETE` | `/api/tokens/current` | Bearer token |
 | `POST` | `/api/payment-requests` | `payments:create` |
 | `GET` | `/api/payment-requests` | `payments:read` |

@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Application\Auth\RegisterUser;
 use App\Application\Auth\RevokeCurrentAccessToken;
+use App\Application\Auth\UpdateCurrentUser;
 use App\Domain\Users\Enums\UserRole;
 use App\Http\Requests\LoginFormRequest;
 use App\Http\Requests\RegisterUserFormRequest;
+use App\Http\Requests\UpdateCurrentUserFormRequest;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -74,6 +77,32 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateCurrentUser(UpdateCurrentUserFormRequest $request, UpdateCurrentUser $updateCurrentUser): JsonResponse
+    {
+        $validated = $request->validated();
+        $data = [];
+
+        foreach (['name', 'email', 'password'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $data[$field] = $validated[$field];
+            }
+        }
+
+        if (array_key_exists('country_code', $validated)) {
+            $data['country_id'] = Country::query()->where('code', $validated['country_code'])->firstOrFail()->id;
+        }
+
+        if (array_key_exists('preferred_currency_code', $validated)) {
+            $data['preferred_currency_id'] = Currency::query()->where('code', $validated['preferred_currency_code'])->firstOrFail()->id;
+        }
+
+        $user = $updateCurrentUser->handle($request->user(), $data);
+
+        return response()->json([
+            'data' => $this->userData($user),
+        ]);
+    }
+
     public function revokeToken(Request $request, RevokeCurrentAccessToken $revokeCurrentAccessToken): JsonResponse
     {
         $revokeCurrentAccessToken->handle($request->user());
@@ -86,7 +115,7 @@ class AuthController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function userData($user): array
+    private function userData(User $user): array
     {
         $user->loadMissing(['role', 'country', 'preferredCurrency']);
 
