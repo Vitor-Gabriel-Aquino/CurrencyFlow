@@ -127,6 +127,16 @@ The backend provides:
 - authenticated API access through Bearer tokens;
 - token revocation through `DELETE /api/tokens/current`.
 
+Finance users can create additional public PKCE clients from the web portal:
+
+```text
+http://localhost:8000/developer/oauth-clients
+```
+
+The portal creates public clients without `client_secret`, intended for browser-based frontends using Authorization Code with PKCE. Confidential clients, homepage URLs, and secret rotation are intentionally outside this first portal version.
+
+Revoking a client in this portal disables that client for future OAuth flows and also revokes every access token and refresh token already issued to it. This follows Laravel Passport's token revocation guidance and avoids leaving previously issued credentials active after a client has been disabled.
+
 The frontend or API client is responsible for the PKCE flow:
 
 1. Generate a temporary `code_verifier`.
