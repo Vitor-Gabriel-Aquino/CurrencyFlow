@@ -164,7 +164,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "example": "payments:read payments:create"
+              "example": "profile:read payments:read payments:create"
             }
           },
           {
@@ -249,7 +249,7 @@
         "operationId": "getCurrentUser",
         "security": [
           {
-            "PassportOAuth": []
+            "PassportOAuth": ["profile:read"]
           }
         ],
         "responses": {
@@ -265,6 +265,56 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Authentication"],
+        "summary": "Update current authenticated user",
+        "operationId": "updateCurrentUser",
+        "security": [
+          {
+            "PassportOAuth": ["profile:update"]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCurrentUserRequest"
+              },
+              "example": {
+                "name": "Jane Employee",
+                "email": "jane.updated@example.com",
+                "country_code": "BR",
+                "preferred_currency_code": "BRL"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated user updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -566,6 +616,8 @@
             "authorizationUrl": "http://localhost:8000/oauth/authorize",
             "tokenUrl": "http://localhost:8000/oauth/token",
             "scopes": {
+              "profile:read": "Read the authenticated user profile",
+              "profile:update": "Update the authenticated user profile",
               "payments:read": "Read payment requests",
               "payments:create": "Create payment requests",
               "payments:approve": "Approve or reject payment requests"
@@ -767,6 +819,45 @@
             "type": "string",
             "minLength": 3,
             "maxLength": 3
+          }
+        }
+      },
+      "UpdateCurrentUserRequest": {
+        "type": "object",
+        "description": "Partial update payload for the authenticated user. Role cannot be changed through this endpoint.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "country_code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "preferred_currency_code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "current_password": {
+            "type": "string",
+            "format": "password",
+            "description": "Required when password is present."
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8
+          },
+          "password_confirmation": {
+            "type": "string",
+            "format": "password"
           }
         }
       },
