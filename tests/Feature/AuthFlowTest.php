@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Database\Seeders\ReferenceDataSeeder;
+use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Client;
+use Laravel\Passport\RefreshToken;
+use Laravel\Passport\Token;
 use Tests\TestCase;
 
 class AuthFlowTest extends TestCase
@@ -79,6 +82,118 @@ class AuthFlowTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
+    }
+
+    public function test_finance_user_can_manage_oauth_clients(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+
+        $this->actingAs($finance)
+            ->get('/developer/oauth-clients')
+            ->assertOk()
+            ->assertSee('OAuth clients')
+            ->assertSee('Signed in as')
+            ->assertSee('marta.kowalska@example.com');
+    }
+
+    public function test_employee_cannot_manage_oauth_clients(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        $employee = User::query()->where('email', 'ana.silva@example.com')->firstOrFail();
+
+        $this->actingAs($employee)
+            ->get('/developer/oauth-clients')
+            ->assertForbidden();
+    }
+
+    public function test_finance_user_can_create_public_oauth_client(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+
+        $this->actingAs($finance)
+            ->withSession(['_token' => 'test-token'])
+            ->post('/developer/oauth-clients', [
+                '_token' => 'test-token',
+                'name' => 'Partner Portal',
+                'redirect_uri' => 'https://partner.example.com/auth/callback',
+            ])
+            ->assertRedirect('/developer/oauth-clients')
+            ->assertSessionHas('created_client_id');
+
+        $this->assertDatabaseHas('oauth_clients', [
+            'name' => 'Partner Portal',
+            'secret' => null,
+            'provider' => 'users',
+            'revoked' => false,
+        ]);
+    }
+
+    public function test_finance_user_can_revoke_oauth_client(): void
+    {
+        $this->seed([
+            ReferenceDataSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        $finance = User::query()->where('email', 'marta.kowalska@example.com')->firstOrFail();
+        $client = Client::factory()
+            ->asPublic()
+            ->create([
+                'name' => 'Partner Portal',
+                'provider' => 'users',
+                'redirect_uris' => ['https://partner.example.com/auth/callback'],
+                'grant_types' => ['authorization_code', 'refresh_token'],
+                'revoked' => false,
+            ]);
+        $token = Token::query()->create([
+            'id' => 'test-access-token',
+            'user_id' => $finance->id,
+            'client_id' => $client->id,
+            'name' => 'Partner Portal Token',
+            'scopes' => ['payments:read'],
+            'revoked' => false,
+            'expires_at' => now()->addHour(),
+        ]);
+        $refreshToken = RefreshToken::query()->create([
+            'id' => 'test-refresh-token',
+            'access_token_id' => $token->id,
+            'revoked' => false,
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->actingAs($finance)
+            ->withSession(['_token' => 'test-token'])
+            ->delete("/developer/oauth-clients/{$client->id}", [
+                '_token' => 'test-token',
+            ])
+            ->assertRedirect('/developer/oauth-clients');
+
+        $this->assertDatabaseHas('oauth_clients', [
+            'id' => $client->id,
+            'revoked' => true,
+        ]);
+        $this->assertDatabaseHas('oauth_access_tokens', [
+            'id' => $token->id,
+            'revoked' => true,
+        ]);
+        $this->assertDatabaseHas('oauth_refresh_tokens', [
+            'id' => $refreshToken->id,
+            'revoked' => true,
+        ]);
     }
 
     public function test_current_user_route_requires_authentication(): void

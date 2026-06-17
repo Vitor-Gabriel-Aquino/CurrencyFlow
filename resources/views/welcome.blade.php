@@ -25,6 +25,10 @@
                 </div>
 
                 <div class="actions">
+                    @can('manage-oauth-clients')
+                        <a class="button-primary" href="{{ route('developer.oauth-clients.index') }}">OAuth clients</a>
+                    @endcan
+
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button class="button-secondary" type="submit">Sign out</button>

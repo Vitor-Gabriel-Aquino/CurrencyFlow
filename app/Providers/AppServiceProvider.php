@@ -40,5 +40,6 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Gate::define('perform-finance-actions', fn (User $user): bool => $user->hasRole(UserRole::Finance->value));
+        Gate::define('manage-oauth-clients', fn (User $user): bool => $user->hasRole(UserRole::Finance->value));
     }
 }
