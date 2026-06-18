@@ -33,4 +33,4 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload --optimize \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8000} -t public public/index.php"]
+CMD ["sh", "-c", "php artisan passport:keys --force && php artisan config:clear && php -S 0.0.0.0:${PORT:-8000} -t public public/index.php"]
