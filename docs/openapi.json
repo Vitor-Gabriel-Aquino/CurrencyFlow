@@ -471,6 +471,66 @@
         }
       }
     },
+    "/api/exchange-rate-preview": {
+      "get": {
+        "tags": ["Payment Requests"],
+        "summary": "Preview the current EUR exchange rate for a currency",
+        "description": "Returns the current provider quote used to help users understand the rate before creating a payment request. The immutable exchange-rate snapshot is still captured when the payment request is created.",
+        "operationId": "previewExchangeRate",
+        "security": [
+          {
+            "PassportOAuth": ["payments:create"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "currency_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "example": "BRL"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exchange-rate preview returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRatePreviewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "503": {
+            "description": "Exchange rates are temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                },
+                "example": {
+                  "message": "Exchange rates are temporarily unavailable."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/payment-requests/{paymentRequest}": {
       "get": {
         "tags": ["Payment Requests"],
@@ -972,6 +1032,41 @@
           "review_note": {
             "type": ["string", "null"],
             "maxLength": 2000
+          }
+        }
+      },
+      "ExchangeRatePreview": {
+        "type": "object",
+        "required": ["base_currency_code", "local_currency_code", "eur_exchange_rate", "source", "fetched_at"],
+        "properties": {
+          "base_currency_code": {
+            "type": "string",
+            "example": "EUR"
+          },
+          "local_currency_code": {
+            "type": "string",
+            "example": "BRL"
+          },
+          "eur_exchange_rate": {
+            "type": "string",
+            "example": "5.88184850"
+          },
+          "source": {
+            "type": "string",
+            "example": "ExchangeRate-API"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ExchangeRatePreviewResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ExchangeRatePreview"
           }
         }
       },

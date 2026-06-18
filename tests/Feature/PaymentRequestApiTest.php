@@ -103,6 +103,49 @@ class PaymentRequestApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_exchange_rate_preview_requires_authentication(): void
+    {
+        $this->getJson('/api/exchange-rate-preview?currency_code=BRL')
+            ->assertUnauthorized();
+    }
+
+    public function test_exchange_rate_preview_requires_create_scope(): void
+    {
+        Passport::actingAs($this->employee(), ['payments:read'], 'api');
+
+        $this->getJson('/api/exchange-rate-preview?currency_code=BRL')
+            ->assertForbidden();
+    }
+
+    public function test_employee_can_preview_exchange_rate_with_create_scope(): void
+    {
+        Passport::actingAs($this->employee(), ['payments:create'], 'api');
+
+        $this->getJson('/api/exchange-rate-preview?currency_code=BRL')
+            ->assertOk()
+            ->assertJsonPath('data.base_currency_code', 'EUR')
+            ->assertJsonPath('data.local_currency_code', 'BRL')
+            ->assertJsonPath('data.eur_exchange_rate', '5.88184850')
+            ->assertJsonPath('data.source', 'ExchangeRate-API')
+            ->assertJsonPath('data.fetched_at', '2026-06-14T10:00:00.000000Z');
+    }
+
+    public function test_exchange_rate_preview_provider_failure_returns_service_unavailable(): void
+    {
+        $this->app->bind(ExchangeRateProvider::class, fn (): ExchangeRateProvider => new class implements ExchangeRateProvider {
+            public function getEurExchangeRate(CurrencyCode $localCurrencyCode): ExchangeRateQuote
+            {
+                throw ExchangeRateProviderException::unavailable();
+            }
+        });
+
+        Passport::actingAs($this->employee(), ['payments:create'], 'api');
+
+        $this->getJson('/api/exchange-rate-preview?currency_code=BRL')
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'Exchange rates are temporarily unavailable.');
+    }
+
     public function test_payment_request_listing_requires_read_scope(): void
     {
         Passport::actingAs($this->employee(), ['payments:create'], 'api');

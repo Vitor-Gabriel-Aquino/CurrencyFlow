@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\ExchangeRatePreviewController;
 use App\Http\Controllers\PaymentRequestController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passport\Http\Middleware\CheckToken;
@@ -24,6 +25,7 @@ Route::middleware(['auth:api', CheckToken::class.':payments:read'])->group(funct
 });
 
 Route::middleware(['auth:api', CheckToken::class.':payments:create'])->post('/payment-requests', [PaymentRequestController::class, 'store']);
+Route::middleware(['auth:api', CheckToken::class.':payments:create'])->get('/exchange-rate-preview', [ExchangeRatePreviewController::class, 'show']);
 
 Route::middleware(['auth:api', CheckToken::class.':payments:approve'])->group(function (): void {
     Route::post('/payment-requests/{paymentRequest}/approval', [PaymentRequestController::class, 'approve']);

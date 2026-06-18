@@ -315,6 +315,39 @@
       "name": "Payment Requests",
       "item": [
         {
+          "name": "Preview Exchange Rate",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/exchange-rate-preview?currency_code=BRL",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exchange-rate-preview"],
+              "query": [
+                {
+                  "key": "currency_code",
+                  "value": "BRL"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Create Payment Request",
           "event": [
             {
