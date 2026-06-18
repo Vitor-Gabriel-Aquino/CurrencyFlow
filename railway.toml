@@ -3,4 +3,4 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "php -S 0.0.0.0:$PORT -t public public/index.php"
+startCommand = "sh -c 'php -S 0.0.0.0:${PORT:-8000} -t public public/index.php'"
